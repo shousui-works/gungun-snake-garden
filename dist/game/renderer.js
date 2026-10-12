@@ -1,5 +1,5 @@
 import { CONFIG, FRUITS, RAINBOW_COLORS } from './config.js';
-import { relation, clamp, appearanceFor } from './rules.js';
+import { relation, clamp, appearanceFor, experienceNeeded } from './rules.js';
 const FONT = '"Hiragino Maru Gothic ProN", "Yu Gothic", system-ui, sans-serif';
 const circle = (c, x, y, r) => { c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); };
 function pill(c, x, y, w, h, r) { c.beginPath(); c.roundRect(x, y, w, h, r); }
@@ -55,12 +55,11 @@ export class Renderer {
     for (const e of sim.enemies) if (e.active) this.drawSnake(e, false);
     if (sim.treasure) this.drawSnake(sim.treasure, false);
     this.drawSnake(p, true);
-    for (const e of sim.enemies) if (e.active && this.visible(e.x, e.y)) this.drawLabel(e, false);
+    for (const e of sim.enemies) if (e.active && this.visible(e.x, e.y)) this.drawLabel(e);
     if (sim.treasure) {
-      if (this.visible(sim.treasure.x, sim.treasure.y)) this.drawLabel(sim.treasure, false);
+      if (this.visible(sim.treasure.x, sim.treasure.y)) this.drawLabel(sim.treasure);
       this.drawTreasureHint(sim.treasure);
     }
-    this.drawLabel(p, true);
     if (this.directionCue) {
       this.directionCue.life -= dt;
       if (this.directionCue.life <= 0 || sim.state !== 'playing') this.directionCue = null;
@@ -78,6 +77,7 @@ export class Renderer {
       c.save(); c.globalAlpha = Math.min(1, pt.life * 3); c.font = `800 ${pt.large ? 23 : pt.bite ? 16 : 19}px ${FONT}`; c.textAlign = 'center';
       c.lineWidth = 5; c.strokeStyle = '#fdfcf5'; c.strokeText(pt.text, pt.x, pt.y); c.fillStyle = pt.treasure ? '#a47726' : pt.bite ? '#b56c57' : '#7956b7'; c.fillText(pt.text, pt.x, pt.y); c.restore();
     }
+    this.drawGrowthLabel(p);
   }
   drawGardenFlower(f) {
     const c = this.ctx, growth = 1 - f.bloomTimer / .65;
@@ -222,24 +222,45 @@ export class Renderer {
     for (let i=0;i<6;i++) { const a=i*Math.PI/3; circle(c,x+Math.cos(a)*r*.17,y+Math.sin(a)*r*.17,r*.13); c.fill(); }
     c.fillStyle = '#fff1a9'; circle(c,x,y,r*.12); c.fill(); c.restore();
   }
-  drawLabel(s, player) {
+  drawLabel(s) {
     if (s.treasure) {
       const c = this.ctx, x = s.x - 38, y = s.y - s.radius - 33;
       c.fillStyle = '#fff5d8'; c.strokeStyle = '#d4b469'; c.lineWidth = 1; pill(c, x, y, 76, 24, 11); c.fill(); c.stroke();
       c.fillStyle = '#ba9038'; star(c, x + 13, y + 12, 6); c.font = `700 10px ${FONT}`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('おたから', x + 45, y + 12); c.textBaseline = 'alphabetic'; return;
     }
-    const c = this.ctx, mode = relation(this.simulation.player.level, s.level), text = player ? `あなた  Lv.${s.level}` : `Lv.${s.level}`;
-    c.font = `700 10px ${FONT}`; const w = c.measureText(text).width + (player ? 19 : 37), x = s.x - w / 2, y = s.y - s.radius - (player && s.level >= 5 ? 43 : 35);
+    const c = this.ctx, mode = relation(this.simulation.player.level, s.level), text = `Lv.${s.level}`;
+    c.font = `700 10px ${FONT}`; const w = c.measureText(text).width + 37, x = s.x - w / 2, y = s.y - s.radius - 35;
     c.fillStyle = '#596b4530'; pill(c, x, y + 2, w, 24, 11); c.fill();
-    c.fillStyle = player ? '#f5effb' : mode === 'danger' ? '#fff0e5' : '#f8faee'; pill(c, x, y, w, 24, 11); c.fill();
-    c.strokeStyle = player ? '#b398d5' : mode === 'danger' ? '#ce8d74' : '#adbd97'; c.lineWidth = 1; c.stroke();
-    c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = player ? '#7957b0' : '#657851';
-    if (!player) {
-      c.fillStyle = mode === 'danger' ? '#b56b55' : mode === 'edible' ? '#6e9147' : '#99a88b';
-      c.font = `900 13px ${FONT}`; c.fillText(mode === 'danger' ? '!' : mode === 'edible' ? '○' : '＝', x + 12, y + 12);
-      c.font = `700 10px ${FONT}`; c.fillStyle = '#657851';
-    }
-    c.fillText(text, x + w / 2 + (player ? 0 : 9), y + 12); c.textBaseline = 'alphabetic';
+    c.fillStyle = mode === 'danger' ? '#fff0e5' : '#f8faee'; pill(c, x, y, w, 24, 11); c.fill();
+    c.strokeStyle = mode === 'danger' ? '#ce8d74' : '#adbd97'; c.lineWidth = 1; c.stroke();
+    c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.fillStyle = mode === 'danger' ? '#b56b55' : mode === 'edible' ? '#6e9147' : '#99a88b';
+    c.font = `900 13px ${FONT}`; c.fillText(mode === 'danger' ? '!' : mode === 'edible' ? '○' : '＝', x + 12, y + 12);
+    c.font = `700 10px ${FONT}`; c.fillStyle = '#657851';
+    c.fillText(text, x + w / 2 + 9, y + 12); c.textBaseline = 'alphabetic';
+  }
+  drawGrowthLabel(s) {
+    const c = this.ctx, needed = experienceNeeded(s.level), fraction = `${s.xp} / ${needed}`, title = `あなた  Lv.${s.level}`;
+    c.save(); c.font = `700 9px ${FONT}`;
+    const countWidth = c.measureText(fraction).width;
+    c.font = `700 10px ${FONT}`;
+    const w = Math.max(112, c.measureText(title).width + 20, countWidth + 74), h = 36;
+    const left = this.camera.x - this.width / this.scale / 2, top = this.camera.y - this.height / this.scale / 2;
+    const x = clamp(s.x - w / 2, left + 6 / this.scale, left + this.width / this.scale - w - 6 / this.scale);
+    // Keep the small status card inside the field and clear of the corner buttons.
+    const touchesControls = (x - left + w) * this.scale > this.width - 126;
+    const minY = top + (touchesControls ? 72 : 6) / this.scale, maxY = top + (this.height - 6) / this.scale - h;
+    let y = s.y - s.radius - h - 26;
+    if (y < minY) y = s.y + s.radius + 12;
+    y = clamp(y, minY, maxY);
+    c.fillStyle = '#596b4530'; pill(c, x, y + 2, w, h, 11); c.fill();
+    c.fillStyle = '#f5effbf2'; c.strokeStyle = '#b398d5'; c.lineWidth = 1; pill(c, x, y, w, h, 11); c.fill(); c.stroke();
+    c.fillStyle = '#7957b0'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(title, x + w / 2, y + 11);
+    const barX = x + 9, barY = y + 23, barWidth = w - countWidth - 26, progress = clamp(s.xp / needed, 0, 1);
+    c.fillStyle = '#dfd4ed'; pill(c, barX, barY, barWidth, 6, 3); c.fill();
+    if (progress > 0) { c.fillStyle = progress >= .8 ? '#c5a34d' : '#9476cf'; pill(c, barX, barY, barWidth * progress, 6, 3); c.fill(); }
+    c.font = `700 9px ${FONT}`; c.fillStyle = '#7957b0'; c.textAlign = 'right'; c.fillText(fraction, x + w - 8, y + 26);
+    c.restore();
   }
   destroy() { this.observer.disconnect(); }
 }
