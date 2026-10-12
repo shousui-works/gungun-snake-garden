@@ -2,7 +2,7 @@ import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { Script } from 'node:vm';
 
 const base = new URL('../dist/', import.meta.url);
-const modules = ['config', 'rules', 'simulation', 'input', 'audio', 'renderer', 'main'];
+const modules = ['config', 'rules', 'simulation', 'input', 'audio', 'renderer', 'ranking', 'main'];
 const parts = [];
 for (const name of modules) {
   const source = await readFile(new URL(`game/${name}.js`, base), 'utf8');

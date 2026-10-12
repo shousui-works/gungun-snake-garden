@@ -1,7 +1,11 @@
 {
   "name": "gungun-snake-garden",
-  "version": "1.5.1",
+  "version": "1.6.0",
   "private": true,
   "type": "module",
-  "scripts": { "dev": "node server.mjs", "test": "node --test tests/*.test.mjs", "build": "node check.mjs" }
+  "scripts": {
+    "dev": "node server.mjs",
+    "test": "node --test tests/*.test.mjs ranking-service/tests/*.test.mjs",
+    "build": "node check.mjs"
+  }
 }

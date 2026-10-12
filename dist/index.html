@@ -16,6 +16,7 @@
     <symbol id="i-sound" viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4zM17 8q4 4 0 8M20 5q7 7 0 14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round"/></symbol>
     <symbol id="i-mute" viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4zM17 9l5 6m0-6-5 6" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round"/></symbol>
     <symbol id="i-star" viewBox="0 0 24 24"><path d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z" fill="currentColor"/></symbol>
+    <symbol id="i-trophy" viewBox="0 0 24 24"><path d="M7 4h10v5a5 5 0 0 1-10 0V4zm0 1H4v3q0 4 4 4m9-7h3v3q0 4-4 4m-4 2v6m-4 0h8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
     <symbol id="i-leaf" viewBox="0 0 24 24"><path d="M5 19C1 7 11 4 20 4c0 10-6 16-13 13m-3 4L16 9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
     <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14m-5-5 5 5-5 5" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></symbol>
     <symbol id="i-restart" viewBox="0 0 24 24"><path d="M4 10a8 8 0 1 1 1 7M4 4v6h6" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/></symbol>
@@ -59,6 +60,7 @@
               <p class="difficulty-hint" id="difficulty-hint" aria-live="polite">ほどよい速さで楽しもう</p>
             </fieldset>
             <button class="primary-button" id="start-button"><svg><use href="#i-play"/></svg>はじめる<svg class="button-arrow"><use href="#i-arrow"/></svg></button>
+            <button class="ranking-link" id="start-ranking-button"><svg aria-hidden="true"><use href="#i-trophy"/></svg>みんなのランキング</button>
             <div class="start-tips transformation-tips"><span><svg><use href="#i-dots"/></svg> Lv.3 みずたま</span><span><svg><use href="#i-flower"/></svg> Lv.5 お花</span><span><svg><use href="#i-rainbow"/></svg> Lv.8 にじいろ</span></div>
           </section>
           <section class="menu-card compact hidden" id="pause-menu" aria-labelledby="pause-title">
@@ -67,11 +69,36 @@
             <p class="garden-stats" id="garden-text">お花 0本 ・ おたから 0ひき</p>
             <button class="primary-button" id="resume-button"><svg><use href="#i-play"/></svg>つづける</button><button class="secondary-button" id="restart-button"><svg><use href="#i-restart"/></svg>はじめから</button>
             <button class="choose-button" id="pause-choose-button">むずかしさを変える<small>レベル1から あそぶ</small></button>
+            <button class="ranking-link" id="pause-ranking-button"><svg aria-hidden="true"><use href="#i-trophy"/></svg>みんなのランキング</button>
           </section>
           <section class="menu-card compact hidden" id="end-menu" aria-labelledby="end-title">
             <div class="menu-symbol star-symbol"><svg><use href="#i-star"/></svg></div><div class="eyebrow" id="end-eyebrow">よく そだったね！</div><h2 id="end-title">また あそぼう！</h2><div class="result-level">レベル <strong id="result-level">1</strong></div><p class="result-stats" id="result-stats"></p><p class="garden-stats" id="garden-stats"></p>
+            <form class="record-form" id="record-form">
+              <label for="nickname">ランキングに のせよう！</label>
+              <p id="nickname-hint">ニックネームは みんなに見えるよ（12文字まで）</p>
+              <div class="record-fields"><input id="nickname" type="text" maxlength="24" autocomplete="off" aria-describedby="nickname-hint record-status" placeholder="りんごヘビ"><button type="submit" id="record-button">とうろく</button></div>
+              <p class="record-status" id="record-status" role="status" aria-live="polite"></p>
+            </form>
+            <button class="ranking-link" id="end-ranking-button"><svg aria-hidden="true"><use href="#i-trophy"/></svg>みんなのランキング</button>
             <button class="primary-button" id="again-button"><svg><use href="#i-restart"/></svg>もういっかい</button>
             <button class="choose-button" id="end-choose-button">むずかしさを変える<small>レベル1から あそぶ</small></button>
+          </section>
+          <section class="menu-card ranking-card hidden" id="ranking-menu" aria-labelledby="ranking-title">
+            <div class="eyebrow">どこまで そだった？</div>
+            <h2 id="ranking-title"><svg aria-hidden="true"><use href="#i-trophy"/></svg>みんなのランキング</h2>
+            <fieldset class="difficulty-picker ranking-picker"><legend>むずかしさ</legend><div class="difficulty-options">
+              <label><input class="sr-only" type="radio" name="ranking-difficulty" value="easy" aria-label="ランキング：やさしい"><span>やさしい</span></label>
+              <label><input class="sr-only" type="radio" name="ranking-difficulty" value="normal" aria-label="ランキング：ふつう" checked><span>ふつう</span></label>
+              <label><input class="sr-only" type="radio" name="ranking-difficulty" value="hard" aria-label="ランキング：むずかしい"><span>むずかしい</span></label>
+            </div></fieldset>
+            <p class="ranking-rule">レベル → 経験値の順 ・ 上位20件の記録</p>
+            <p class="ranking-personal hidden" id="ranking-personal"></p>
+            <div class="ranking-list" id="ranking-list" aria-busy="false"></div>
+            <p class="ranking-message" id="ranking-message" role="status" aria-live="polite"></p>
+            <div class="ranking-actions"><button class="secondary-button" id="ranking-refresh-button">こうしん</button><button class="primary-button" id="ranking-close-button">もどる</button></div>
+            <p class="ranking-footnote">ひとつのブラウザにつき、難易度ごとの自己ベスト</p>
+            <button class="ranking-delete hidden" id="ranking-delete-button">この難易度の自分の記録を消す</button>
+            <div class="ranking-delete-confirm hidden" id="ranking-delete-confirm"><p>自分の記録を 消してもいい？</p><button id="ranking-delete-yes">消す</button><button id="ranking-delete-no">やめる</button></div>
           </section>
         </div>
       </div>
