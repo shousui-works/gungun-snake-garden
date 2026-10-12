@@ -81,17 +81,16 @@ export class Renderer {
   }
   drawGardenFlower(f) {
     const c = this.ctx, growth = 1 - f.bloomTimer / .65;
-    const size = f.scale * (f.bloomTimer > 0 ? .15 + .85 * (1 - (1 - growth) ** 3) : 1);
-    c.save(); c.translate(f.x, f.y); c.scale(size, size);
+    const size = f.scale * .74 * (f.bloomTimer > 0 ? .15 + .85 * (1 - (1 - growth) ** 3) : 1);
+    c.save(); c.translate(f.x, f.y); c.scale(size, size); c.globalAlpha = f.bloomTimer > 0 ? .8 : .64;
     c.fillStyle = '#8ba57435'; c.beginPath(); c.ellipse(0, 6, 10, 3, 0, 0, Math.PI * 2); c.fill();
     c.strokeStyle = '#7c9d64'; c.lineWidth = 2; c.lineCap = 'round'; c.beginPath(); c.moveTo(0, 5); c.quadraticCurveTo(2, -1, 0, -9); c.stroke();
     c.fillStyle = '#97b577'; c.beginPath(); c.ellipse(-4, 1, 5, 2.4, .5, 0, Math.PI * 2); c.ellipse(4, -3, 5, 2.4, -.5, 0, Math.PI * 2); c.fill();
     c.translate(0, -10); c.rotate(f.rotation);
-    c.fillStyle = f.kind === 'gold' ? '#f4d46f' : f.kind === 'apple' ? '#eea4b5' : f.kind === 'banana' ? '#f2d987' : FRUITS.grapes.color;
-    c.strokeStyle = '#fff6e5b0'; c.lineWidth = 1;
-    for (let i = 0; i < 5; i++) { const a = i * Math.PI * 2 / 5; circle(c, Math.cos(a) * 5.1, Math.sin(a) * 5.1, 4.4); c.fill(); c.stroke(); }
-    c.fillStyle = '#fff1bb'; circle(c, 0, 0, 3.3); c.fill();
-    if (f.bloomTimer > 0) { c.globalAlpha = f.bloomTimer / .65; c.fillStyle = '#fffbe8'; star(c, 15, -7 - growth * 10, 4); star(c, -13, 3 - growth * 7, 3); }
+    c.fillStyle = f.kind === 'gold' ? '#cbb979' : f.kind === 'apple' ? '#cba8b0' : f.kind === 'banana' ? '#c7bb8d' : '#b5adc8';
+    for (let i = 0; i < 5; i++) { const a = i * Math.PI * 2 / 5; circle(c, Math.cos(a) * 5.1, Math.sin(a) * 5.1, 4.4); c.fill(); }
+    c.fillStyle = '#e4d6ab'; circle(c, 0, 0, 3.3); c.fill();
+    if (f.bloomTimer > 0) { c.globalAlpha = .45 * f.bloomTimer / .65; c.fillStyle = '#fffbe8'; star(c, 15, -7 - growth * 10, 4); star(c, -13, 3 - growth * 7, 3); }
     c.restore();
   }
   drawTreasureHint(t) {
@@ -127,22 +126,29 @@ export class Renderer {
     c.fillStyle = '#78975a38'; c.beginPath(); c.ellipse(0, 10, 10, 3.7, 0, 0, Math.PI * 2); c.fill();
     c.lineWidth = 1.2; c.lineJoin = 'round'; c.lineCap = 'round';
     if (f.kind === 'banana') {
-      c.fillStyle = '#f2cd62'; c.strokeStyle = '#c99e42'; c.beginPath();
-      c.moveTo(-11,-7); c.quadraticCurveTo(-3,8,12,-5); c.quadraticCurveTo(10,8,1,11); c.quadraticCurveTo(-12,12,-11,-7); c.closePath(); c.fill(); c.stroke();
+      c.beginPath();
+      c.moveTo(-11,-7); c.quadraticCurveTo(-3,8,12,-5); c.quadraticCurveTo(10,8,1,11); c.quadraticCurveTo(-12,12,-11,-7); c.closePath();
+      c.strokeStyle = '#fffdf2'; c.lineWidth = 5; c.stroke();
+      c.fillStyle = FRUITS.banana.color; c.fill(); c.strokeStyle = '#c99e42'; c.lineWidth = 1.2; c.stroke();
       c.strokeStyle = '#fff0b5'; c.lineWidth = 2; c.beginPath(); c.moveTo(-7,-1); c.quadraticCurveTo(-3,9,7,3); c.stroke();
       c.strokeStyle = '#8a7951'; c.lineWidth = 2.2; c.beginPath(); c.moveTo(-11,-7); c.lineTo(-10,-5); c.moveTo(12,-5); c.lineTo(11,-3); c.stroke();
     } else if (f.kind === 'grapes') {
       c.strokeStyle = '#63874e'; c.lineWidth = 1.8; c.beginPath(); c.moveTo(0,-9); c.quadraticCurveTo(-3,-13,1,-16); c.stroke();
       c.fillStyle = '#81a764'; c.beginPath(); c.ellipse(5,-12,5,2.4,-.5,0,Math.PI*2); c.fill();
+      // Draw one bright silhouette behind the whole bunch, keeping the berry detail clear.
+      c.strokeStyle = '#fffdf2'; c.lineWidth = 4.5;
+      for (const [x,y] of [[0,6],[-3,0],[4,0],[-5,-6],[3,-6]]) { circle(c,x,y,4.4); c.stroke(); }
       for (const [x,y] of [[0,6],[-3,0],[4,0],[-5,-6],[3,-6]]) {
-        c.fillStyle = '#a286ca'; c.strokeStyle = '#8063a8'; c.lineWidth = .8; circle(c,x,y,4.4); c.fill(); c.stroke();
+        c.fillStyle = FRUITS.grapes.color; c.strokeStyle = '#8063a8'; c.lineWidth = .8; circle(c,x,y,4.4); c.fill(); c.stroke();
         c.fillStyle = '#d7c8eb'; circle(c,x-1.2,y-1.5,1.2); c.fill();
       }
     } else {
       c.strokeStyle = '#886443'; c.lineWidth = 2; c.beginPath(); c.moveTo(0,-7); c.quadraticCurveTo(-2,-12,1,-15); c.stroke();
       c.fillStyle = '#85ac68'; c.beginPath(); c.ellipse(5,-11,5,2.6,-.4,0,Math.PI*2); c.fill();
-      c.fillStyle = '#ed837d'; c.strokeStyle = '#c26763'; c.lineWidth = 1.1; c.beginPath();
-      c.moveTo(0,-7); c.bezierCurveTo(-13,-13,-14,6,-5,9); c.quadraticCurveTo(0,11,4,9); c.bezierCurveTo(14,7,13,-12,0,-7); c.closePath(); c.fill(); c.stroke();
+      c.beginPath();
+      c.moveTo(0,-7); c.bezierCurveTo(-13,-13,-14,6,-5,9); c.quadraticCurveTo(0,11,4,9); c.bezierCurveTo(14,7,13,-12,0,-7); c.closePath();
+      c.strokeStyle = '#fffdf2'; c.lineWidth = 5; c.stroke();
+      c.fillStyle = FRUITS.apple.color; c.fill(); c.strokeStyle = '#c26763'; c.lineWidth = 1.1; c.stroke();
       c.strokeStyle = '#ffbdb0'; c.lineWidth = 2.5; c.beginPath(); c.moveTo(-6,-3); c.quadraticCurveTo(-8,-1,-7,3); c.stroke();
     }
     c.restore();
