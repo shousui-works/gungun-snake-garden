@@ -1,8 +1,13 @@
-import { CONFIG, RAINBOW_COLORS } from './config.js';
+import { CONFIG, FRUITS, RAINBOW_COLORS } from './config.js';
 import { relation, clamp, appearanceFor } from './rules.js';
 const FONT = '"Hiragino Maru Gothic ProN", "Yu Gothic", system-ui, sans-serif';
 const circle = (c, x, y, r) => { c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); };
 function pill(c, x, y, w, h, r) { c.beginPath(); c.roundRect(x, y, w, h, r); }
+function star(c, x, y, radius) {
+  c.beginPath();
+  for (let i = 0; i < 10; i++) { const a = i * Math.PI / 5 - Math.PI / 2, r = i % 2 ? radius * .45 : radius; c.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r); }
+  c.closePath(); c.fill();
+}
 export class Renderer {
   constructor(canvas, simulation) {
     this.canvas = canvas; this.simulation = simulation; this.ctx = canvas.getContext('2d', { alpha: false }); this.camera = { x: 800, y: 800 }; this.clock = 0;
@@ -45,10 +50,16 @@ export class Renderer {
     c.strokeStyle = '#98b281'; c.lineWidth = 12; c.strokeRect(6, 6, 1588, 1588);
     c.strokeStyle = '#e1eacd'; c.lineWidth = 3; c.strokeRect(18, 18, 1564, 1564);
     for (const d of this.decorations) if (this.visible(d.x, d.y)) this.drawPlant(d);
+    for (const flower of sim.flowers) if (this.visible(flower.x, flower.y, 30)) this.drawGardenFlower(flower);
     for (const f of sim.food) if (this.visible(f.x, f.y)) this.drawFood(f);
     for (const e of sim.enemies) if (e.active) this.drawSnake(e, false);
+    if (sim.treasure) this.drawSnake(sim.treasure, false);
     this.drawSnake(p, true);
     for (const e of sim.enemies) if (e.active && this.visible(e.x, e.y)) this.drawLabel(e, false);
+    if (sim.treasure) {
+      if (this.visible(sim.treasure.x, sim.treasure.y)) this.drawLabel(sim.treasure, false);
+      this.drawTreasureHint(sim.treasure);
+    }
     this.drawLabel(p, true);
     if (this.directionCue) {
       this.directionCue.life -= dt;
@@ -65,8 +76,33 @@ export class Renderer {
     c.globalAlpha = 1;
     for (const pt of sim.popups) {
       c.save(); c.globalAlpha = Math.min(1, pt.life * 3); c.font = `800 ${pt.large ? 23 : pt.bite ? 16 : 19}px ${FONT}`; c.textAlign = 'center';
-      c.lineWidth = 5; c.strokeStyle = '#fdfcf5'; c.strokeText(pt.text, pt.x, pt.y); c.fillStyle = pt.bite ? '#b56c57' : '#7956b7'; c.fillText(pt.text, pt.x, pt.y); c.restore();
+      c.lineWidth = 5; c.strokeStyle = '#fdfcf5'; c.strokeText(pt.text, pt.x, pt.y); c.fillStyle = pt.treasure ? '#a47726' : pt.bite ? '#b56c57' : '#7956b7'; c.fillText(pt.text, pt.x, pt.y); c.restore();
     }
+  }
+  drawGardenFlower(f) {
+    const c = this.ctx, growth = 1 - f.bloomTimer / .65;
+    const size = f.scale * (f.bloomTimer > 0 ? .15 + .85 * (1 - (1 - growth) ** 3) : 1);
+    c.save(); c.translate(f.x, f.y); c.scale(size, size);
+    c.fillStyle = '#8ba57435'; c.beginPath(); c.ellipse(0, 6, 10, 3, 0, 0, Math.PI * 2); c.fill();
+    c.strokeStyle = '#7c9d64'; c.lineWidth = 2; c.lineCap = 'round'; c.beginPath(); c.moveTo(0, 5); c.quadraticCurveTo(2, -1, 0, -9); c.stroke();
+    c.fillStyle = '#97b577'; c.beginPath(); c.ellipse(-4, 1, 5, 2.4, .5, 0, Math.PI * 2); c.ellipse(4, -3, 5, 2.4, -.5, 0, Math.PI * 2); c.fill();
+    c.translate(0, -10); c.rotate(f.rotation);
+    c.fillStyle = f.kind === 'gold' ? '#f4d46f' : f.kind === 'apple' ? '#eea4b5' : f.kind === 'banana' ? '#f2d987' : FRUITS.grapes.color;
+    c.strokeStyle = '#fff6e5b0'; c.lineWidth = 1;
+    for (let i = 0; i < 5; i++) { const a = i * Math.PI * 2 / 5; circle(c, Math.cos(a) * 5.1, Math.sin(a) * 5.1, 4.4); c.fill(); c.stroke(); }
+    c.fillStyle = '#fff1bb'; circle(c, 0, 0, 3.3); c.fill();
+    if (f.bloomTimer > 0) { c.globalAlpha = f.bloomTimer / .65; c.fillStyle = '#fffbe8'; star(c, 15, -7 - growth * 10, 4); star(c, -13, 3 - growth * 7, 3); }
+    c.restore();
+  }
+  drawTreasureHint(t) {
+    const point = this.screenPosition(t);
+    if (point.x >= 24 && point.x <= this.width - 24 && point.y >= 55 && point.y <= this.height - 65) return;
+    const x = clamp(point.x, 25, this.width - 25), y = clamp(point.y, x > this.width - 130 ? 86 : 30, this.height - 68);
+    const angle = Math.atan2(point.y - y, point.x - x), c = this.ctx;
+    c.save(); c.setTransform(this.dpr, 0, 0, this.dpr, 0, 0); c.translate(x, y);
+    c.fillStyle = '#fff6d8eb'; c.strokeStyle = '#cba851'; c.lineWidth = 1.2; circle(c, 0, 0, 17); c.fill(); c.stroke();
+    c.fillStyle = '#c9a044'; star(c, 0, 0, 8);
+    c.rotate(angle); c.beginPath(); c.moveTo(20, -4); c.lineTo(27, 0); c.lineTo(20, 4); c.closePath(); c.fill(); c.restore();
   }
   drawPlant(d) {
     const c = this.ctx; c.save(); c.translate(d.x, d.y); c.rotate(d.rotation);
@@ -80,8 +116,9 @@ export class Renderer {
     } c.restore();
   }
   drawFood(f) {
-    const c = this.ctx, bob = Math.sin(this.clock * 2.2 + f.phase) * 1.1;
+    const c = this.ctx, bob = Math.sin(this.clock * 2.2 + f.phase) * 1.1 - (f.flight > 0 ? Math.sin((1 - f.flight / CONFIG.fruitFlightSeconds) * Math.PI) * 32 : 0);
     c.save(); c.translate(f.x, f.y + bob); c.scale(f.large ? CONFIG.bigFruitScale : 1, f.large ? CONFIG.bigFruitScale : 1);
+    if (f.bonus) { c.fillStyle = '#fff1aa55'; circle(c, 0, 0, 15); c.fill(); c.fillStyle = '#f5e6a3'; star(c, 13, -14, 4); }
     if (f.large) {
       c.fillStyle = '#fff3ba65'; circle(c, 0, 0, 17 + Math.sin(this.clock * 2 + f.phase)); c.fill();
       c.strokeStyle = '#fff8d8b0'; c.lineWidth = 1.2; circle(c, 0, 0, 17); c.stroke();
@@ -114,6 +151,10 @@ export class Renderer {
     const c = this.ctx, r = s.radius, count = s.body.length, style = player ? appearanceFor(s.level).id : 'plain';
     const rainbow = style === 'rainbow', hat = style === 'flower' || rainbow;
     const chew = player && s.chewTimer > 0 ? Math.sin((1 - s.chewTimer / CONFIG.chewSeconds) * Math.PI) : 0;
+    if (s.treasure) {
+      c.save(); c.fillStyle = '#ffe9a06b'; circle(c, s.x, s.y, r + 8 + Math.sin(this.clock * 4) * 2); c.fill();
+      c.fillStyle = '#fff7c5'; star(c, s.x - 20, s.y - 18, 4); star(c, s.x + 22, s.y + 10, 3); c.restore();
+    }
     if (player && s.growthTimer > 0) {
       c.save(); c.globalAlpha = Math.min(.7, s.growthTimer); c.strokeStyle = '#fff5c0'; c.lineWidth = 3;
       circle(c, s.x, s.y, r + 18 + (1.5 - s.growthTimer) * 15); c.stroke(); c.restore();
@@ -133,7 +174,8 @@ export class Renderer {
       const colors = rainbow ? RAINBOW_COLORS[i % RAINBOW_COLORS.length] : s.colors;
       c.fillStyle = colors[1]; circle(c, pt.x, pt.y + 1.5, size); c.fill();
       c.fillStyle = colors[0]; circle(c, pt.x, pt.y - 1, size); c.fill();
-      if (player && style !== 'plain') {
+      if (s.treasure) { c.fillStyle = '#fff4b3'; star(c, pt.x, pt.y - 1, size * .48); }
+      else if (player && style !== 'plain') {
         c.fillStyle = '#fffaf0bb'; circle(c, pt.x - size * .28, pt.y - size * .33, size * .18); c.fill();
         circle(c, pt.x + size * .31, pt.y + size * .2, size * .14); c.fill();
       } else if (!player && s.level >= 4 && i % 2 === 0) { c.fillStyle = '#ffffff40'; circle(c, pt.x - size * .2, pt.y - size * .23, size * .45); c.fill(); }
@@ -165,7 +207,7 @@ export class Renderer {
     } else { c.strokeStyle = s.colors[1]; c.lineWidth = 1.2; c.lineCap = 'round'; c.beginPath(); c.moveTo(r * .87, -r * .16); c.quadraticCurveTo(r * 1.06, 0, r * .87, r * .16); c.stroke(); }
     c.restore();
     if (hat) this.drawFlowerHat(s);
-    if (!player && relation(this.simulation.player.level, s.level) === 'danger') {
+    if (!player && !s.treasure && relation(this.simulation.player.level, s.level) === 'danger') {
       c.strokeStyle = '#b96a5c77'; c.lineWidth = 1.8; circle(c, s.x, s.y, r + 5); c.stroke();
     }
   }
@@ -181,6 +223,11 @@ export class Renderer {
     c.fillStyle = '#fff1a9'; circle(c,x,y,r*.12); c.fill(); c.restore();
   }
   drawLabel(s, player) {
+    if (s.treasure) {
+      const c = this.ctx, x = s.x - 38, y = s.y - s.radius - 33;
+      c.fillStyle = '#fff5d8'; c.strokeStyle = '#d4b469'; c.lineWidth = 1; pill(c, x, y, 76, 24, 11); c.fill(); c.stroke();
+      c.fillStyle = '#ba9038'; star(c, x + 13, y + 12, 6); c.font = `700 10px ${FONT}`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('おたから', x + 45, y + 12); c.textBaseline = 'alphabetic'; return;
+    }
     const c = this.ctx, mode = relation(this.simulation.player.level, s.level), text = player ? `あなた  Lv.${s.level}` : `Lv.${s.level}`;
     c.font = `700 10px ${FONT}`; const w = c.measureText(text).width + (player ? 19 : 37), x = s.x - w / 2, y = s.y - s.radius - (player && s.level >= 5 ? 43 : 35);
     c.fillStyle = '#596b4530'; pill(c, x, y + 2, w, 24, 11); c.fill();

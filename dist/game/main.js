@@ -13,11 +13,17 @@ const bestValue = Number(storage.get('snake-garden-best', '1'));
 let best = Number.isFinite(bestValue) && bestValue > 0 ? Math.floor(bestValue) : 1;
 const audio = new GameAudio(storage.get('snake-garden-sound', 'on') !== 'off');
 const sim = new Simulation();
+try { sim.restoreGarden(JSON.parse(storage.get('snake-garden-garden', '[]'))); } catch { /* A damaged save never prevents play. */ }
 const renderer = new Renderer($('game-canvas'), sim);
 const input = new InputController($('game-canvas'), sim, () => {
   if (sim.state === 'playing') pause(); else if (sim.state === 'paused') resume();
 }, () => renderer.screenPosition(sim.player), angle => renderer.showDirection(angle));
-let lastStatus = 0, previous = 0, frameId = 0, bestAtStart = best;
+let lastStatus = 0, previous = 0, frameId = 0, bestAtStart = best, savedGardenRevision = sim.gardenRevision, lastGardenSave = 0;
+function saveGarden() {
+  if (savedGardenRevision === sim.gardenRevision) return;
+  storage.set('snake-garden-garden', JSON.stringify(sim.flowers.map(({ x, y, kind, rotation, scale }) => ({ x, y, kind, rotation, scale }))));
+  savedGardenRevision = sim.gardenRevision;
+}
 function showMenu(id) {
   $('overlay').classList.toggle('hidden', !id);
   for (const menu of ['start-menu', 'pause-menu', 'end-menu']) $(menu).classList.toggle('hidden', id !== menu);
@@ -41,6 +47,7 @@ function updateStatus() {
   $('appearance-icon').setAttribute('href', `#${style.icon}`);
   $('next-appearance').textContent = nextStyle ? `つぎの へんしん Lv.${nextStyle.level}` : 'ぜんぶ へんしん！';
   $('appearance-badge').setAttribute('aria-label', `${style.label}のヘビ。${nextStyle ? `レベル${nextStyle.level}で${nextStyle.label}に変身` : 'すべての変身を達成'}`);
+  $('garden-text').textContent = `お花 ${sim.flowers.length}本 ・ おたから ${sim.treasuresCaught}ひき`;
 }
 function soundUi() {
   $('sound-button').setAttribute('aria-pressed', String(audio.enabled));
@@ -54,17 +61,18 @@ function start() {
 }
 function pause() {
   if (sim.state !== 'playing') return;
-  sim.pause(); input.clear(); updateStatus(); showMenu('pause-menu'); $('resume-button').focus({ preventScroll: true });
+  sim.pause(); input.clear(); updateStatus(); saveGarden(); showMenu('pause-menu'); $('resume-button').focus({ preventScroll: true });
 }
 function resume() {
   if (sim.state !== 'paused') return;
   input.clear(); sim.resume(); audio.init(); showMenu(null); document.activeElement?.blur(); previous = performance.now();
 }
 function finish() {
-  input.clear(); updateStatus(); $('announcement').textContent = '';
+  input.clear(); updateStatus(); saveGarden(); $('announcement').textContent = '';
   $('result-level').textContent = sim.player.level;
   $('end-eyebrow').textContent = sim.player.level > bestAtStart ? '★ さいこうレベル 更新！' : 'よく そだったね！';
   $('result-stats').textContent = `エサ ${sim.foodEaten}こ ・ ヘビ ${sim.enemiesEaten}ひき ぱくっ！`;
+  $('garden-stats').textContent = `お花を ${sim.flowersPlanted}本 さかせたよ！ おたから ${sim.treasuresCaught}ひき`;
   showMenu('end-menu'); $('again-button').focus({ preventScroll: true });
 }
 $('start-button').addEventListener('click', start);
@@ -81,10 +89,14 @@ function frame(now) {
   for (const event of sim.events.splice(0)) {
     audio.play(event.type, event);
     if (event.type === 'level') { updateStatus(); announce(event.style ? `★ ${event.style.label}に へんしん！` : `レベル ${event.level}！ ぐんぐん そだったね`); }
+    if (event.type === 'treasure-appear') announce('金色の おたからヘビ！ 追いかけてみよう');
+    if (event.type === 'treasure') { updateStatus(); announce('おたから！ フルーツが いっぱい'); }
     if (event.type === 'over') finish();
   }
   if (now - lastStatus > 120) { updateStatus(); lastStatus = now; }
+  if (now - lastGardenSave > 2000) { saveGarden(); lastGardenSave = now; }
   renderer.draw(dt); frameId = requestAnimationFrame(frame);
 }
 soundUi(); updateStatus(); showMenu('start-menu'); frameId = requestAnimationFrame(frame);
-window.addEventListener('unload', () => { cancelAnimationFrame(frameId); renderer.destroy(); input.destroy(); audio.destroy(); });
+window.addEventListener('pagehide', saveGarden);
+window.addEventListener('unload', () => { saveGarden(); cancelAnimationFrame(frameId); renderer.destroy(); input.destroy(); audio.destroy(); });

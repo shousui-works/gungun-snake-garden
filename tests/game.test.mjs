@@ -78,6 +78,7 @@ test('five minute maximum population run keeps entities and effects bounded', ()
   for (let i = 0; i < 18000; i++) {
     s.step(1 / 60, i / 200); s.events.length = 0;
   }
-  assert.equal(s.enemies.length, 6); assert.equal(s.food.length, 80); assert.ok(s.particles.length <= 220);
-  for (const snake of [s.player, ...s.enemies]) { assert.ok(snake.path.length < 900); assert.ok(snake.body.length <= 40); assert.ok(Number.isFinite(snake.x + snake.y)); }
+  assert.equal(s.enemies.length, 6); assert.equal(s.food.filter(f => !f.bonus).length, 80); assert.ok(s.food.length <= CONFIG.foodCount + CONFIG.maxBonusFruit); assert.ok(s.particles.length <= 220);
+  assert.ok(s.flowers.length <= CONFIG.maxFlowers);
+  for (const snake of [s.player, ...s.enemies, ...(s.treasure ? [s.treasure] : [])]) { assert.ok(snake.path.length < 900); assert.ok(snake.body.length <= 40); assert.ok(Number.isFinite(snake.x + snake.y)); }
 });

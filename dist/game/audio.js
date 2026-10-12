@@ -26,6 +26,8 @@ export class GameAudio {
     }
     if (type === 'level') [523, 659, 784, 1046].forEach((freq, i) => this.note(freq, i * .095, .17));
     if (type === 'enemy') [440, 660, 880].forEach((freq, i) => this.note(freq, i * .07));
+    if (type === 'treasure-appear') [988, 1175].forEach((freq, i) => this.note(freq, i * .1, .13, .028));
+    if (type === 'treasure') [659, 784, 1046, 1319].forEach((freq, i) => this.note(freq, i * .075, .18));
     if (type === 'start') [523, 784].forEach((freq, i) => this.note(freq, i * .1, .15));
     if (type === 'over') [523, 440, 392].forEach((freq, i) => this.note(freq, i * .13, .2, .03));
   }

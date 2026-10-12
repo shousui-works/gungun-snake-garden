@@ -45,6 +45,9 @@ export class Simulation {
   constructor(random = Math.random) { this.random = random; this.viewport = { width: 800, height: 500 }; this.reset(); }
   reset() {
     this.state = 'ready'; this.time = 0; this.protection = CONFIG.protectionSeconds; this.foodEaten = 0; this.enemiesEaten = 0; this.events = []; this.particles = []; this.popups = []; this.combo = 0; this.comboUntil = 0;
+    this.flowers ??= []; this.gardenRevision ??= 0;
+    for (const flower of this.flowers) flower.bloomTimer = 0;
+    this.flowersPlanted = 0; this.treasuresCaught = 0; this.treasure = null; this.treasureNextAt = CONFIG.treasureFirstSeconds;
     this.player = makeSnake(800, 800, -Math.PI / 2, 1, 'player', [CONFIG.playerColor, CONFIG.playerDark]);
     this.food = [];
     for (let i = 0; i < 7; i++) this.food.push({ x: 800 + Math.sin(i * .7) * 8, y: 754 - i * 43, phase: this.random() * 6, kind: FRUIT_KINDS[i % 3], large: false });
@@ -62,9 +65,90 @@ export class Simulation {
     }
     return { x, y, phase: this.random() * Math.PI * 2, kind: FRUIT_KINDS[Math.floor(this.random() * FRUIT_KINDS.length)], large: this.random() < CONFIG.bigFruitChance };
   }
+  restoreGarden(saved) {
+    if (!Array.isArray(saved)) return;
+    const cells = new Set(), restored = [];
+    for (const f of saved.slice(-CONFIG.maxFlowers)) {
+      if (!f || !Number.isFinite(f.x) || !Number.isFinite(f.y) || f.x < 20 || f.x > CONFIG.worldSize - 20 || f.y < 20 || f.y > CONFIG.worldSize - 20) continue;
+      if (!FRUIT_KINDS.includes(f.kind) && f.kind !== 'gold') continue;
+      const key = `${Math.floor(f.x / 24)},${Math.floor(f.y / 24)}`;
+      if (cells.has(key)) continue;
+      cells.add(key);
+      restored.push({ x: f.x, y: f.y, kind: f.kind, key, rotation: Number.isFinite(f.rotation) ? clamp(f.rotation, 0, Math.PI * 2) : 0, scale: Number.isFinite(f.scale) ? clamp(f.scale, .85, 1.15) : 1, bloomTimer: 0 });
+    }
+    this.flowers = restored; this.gardenRevision++;
+  }
+  bloom(x, y, kind = 'apple') {
+    x = clamp(x, 20, CONFIG.worldSize - 20); y = clamp(y, 20, CONFIG.worldSize - 20);
+    const key = `${Math.floor(x / 24)},${Math.floor(y / 24)}`;
+    const existing = this.flowers.find(f => f.key === key);
+    if (existing) { existing.kind = kind; existing.bloomTimer = .65; }
+    else {
+      this.flowers.push({ x, y, key, kind, rotation: this.random() * Math.PI * 2, scale: .9 + this.random() * .2, bloomTimer: .65 });
+      this.flowersPlanted++;
+      if (this.flowers.length > CONFIG.maxFlowers) this.flowers.shift();
+    }
+    this.gardenRevision++;
+  }
+  scheduleTreasure() { this.treasureNextAt = this.time + CONFIG.treasureIntervalSeconds + this.random() * 8; }
+  spawnTreasure() {
+    const p = this.player;
+    for (let i = 0; i < 12; i++) {
+      const angle = p.angle + (this.random() - .5) * 1.6, gap = 130 + this.random() * 40;
+      const x = clamp(p.x + Math.cos(angle) * gap, 90, CONFIG.worldSize - 90), y = clamp(p.y + Math.sin(angle) * gap, 90, CONFIG.worldSize - 90);
+      if (distance({ x, y }, p) < 75 || this.enemies.some(e => e.active && distance({ x, y }, e) < 135)) continue;
+      const t = makeSnake(x, y, angle, 1, 'treasure', ['#f0cf65', '#b98937']);
+      t.treasure = true; t.radius = 10.5; t.life = CONFIG.treasureLifetime; updateBody(t); t.body.length = 5;
+      this.treasure = t;
+      this.events.push({ type: 'treasure-appear' });
+      this.popups.push({ text: 'おたからヘビ！', x, y: y - 62, life: 2, maxLife: 2, treasure: true });
+      this.burst(x, y, 14, '#fff0a8'); return;
+    }
+    this.treasureNextAt = this.time + 2;
+  }
+  updateTreasure(dt) {
+    if (!this.treasure) { if (this.time >= this.treasureNextAt) this.spawnTreasure(); return; }
+    const t = this.treasure, p = this.player;
+    t.life -= dt;
+    if (t.life <= 0) { this.burst(t.x, t.y, 10, '#f1d578'); this.treasure = null; this.scheduleTreasure(); return; }
+    t.aiWait -= dt;
+    if (t.aiWait <= 0) {
+      t.aiWait = .18;
+      const gap = distance(t, p);
+      const danger = this.enemies.find(e => e.active && distance(e, t) < 120);
+      const avoid = danger || p;
+      t.targetAngle = gap > 300 && !danger ? Math.atan2(p.y - t.y, p.x - t.x) : Math.atan2(t.y - avoid.y, t.x - avoid.x) + Math.sin(this.time * 2.1) * .28;
+    }
+    moveSnake(t, dt, CONFIG.treasureSpeed, 4); t.body.length = 5;
+    if (touching(p, t.body, p.radius + t.radius)) this.catchTreasure();
+  }
+  catchTreasure() {
+    if (this.state !== 'playing' || !this.treasure) return;
+    const t = this.treasure; this.treasure = null; this.treasuresCaught++; this.scheduleTreasure();
+    this.events.push({ type: 'treasure' }); this.bloom(t.x, t.y, 'gold');
+    this.burst(t.x, t.y, 30, '#f5d36f');
+    this.popups.push({ text: 'おたから！', x: t.x, y: t.y - 55, life: 1.8, maxLife: 1.8, large: true, treasure: true });
+    // Bonus fruit is collected once, after its short flight. Regular food stays at 80.
+    const room = CONFIG.maxBonusFruit - this.food.filter(f => f.bonus).length;
+    for (let i = 0; i < Math.min(CONFIG.treasureFruitCount, room); i++) {
+      const angle = i * Math.PI * 2 / CONFIG.treasureFruitCount, radius = 48 + (i % 3) * 17;
+      this.food.push({ x: t.x, y: t.y, originX: t.x, originY: t.y, landingX: clamp(t.x + Math.cos(angle) * radius, 35, CONFIG.worldSize - 35), landingY: clamp(t.y + Math.sin(angle) * radius, 35, CONFIG.worldSize - 35), flight: CONFIG.fruitFlightSeconds, life: CONFIG.bonusFruitLifetime, bonus: true, phase: angle, kind: FRUIT_KINDS[i % FRUIT_KINDS.length], large: i === 0 });
+    }
+  }
+  updateBonusFruit(dt) {
+    for (const f of this.food) if (f.bonus) {
+      if (f.flight > 0) {
+        f.flight = Math.max(0, f.flight - dt);
+        const progress = 1 - f.flight / CONFIG.fruitFlightSeconds, ease = 1 - (1 - progress) ** 2;
+        f.x = f.originX + (f.landingX - f.originX) * ease; f.y = f.originY + (f.landingY - f.originY) * ease;
+      } else f.life -= dt;
+    }
+    this.food = this.food.filter(f => !f.bonus || f.life > 0);
+  }
   reward(amount, x, y, enemy = false, fruit = null) {
     const p = this.player, previousLevel = p.level, next = addExperience(p.level, p.xp, amount);
     p.level = next.level; p.xp = next.xp; p.radius = radiusFor(p.level);
+    this.bloom(x, y, fruit?.kind || 'apple');
     p.chewTimer = CONFIG.chewSeconds;
     if (fruit) {
       this.combo = this.time <= this.comboUntil ? Math.min(this.combo + 1, CONFIG.comboCap) : 1;
@@ -106,7 +190,9 @@ export class Simulation {
       return;
     }
     e.chaseTime = 0;
-    const nearest = this.food.reduce((best, f) => distance(e, f) < distance(e, best) ? f : best, this.food[0]);
+    const regularFood = this.food.filter(f => !f.bonus);
+    const nearest = regularFood.reduce((best, f) => distance(e, f) < distance(e, best) ? f : best, regularFood[0]);
+    if (!nearest) return;
     e.targetAngle = Math.atan2(nearest.y - e.y, nearest.x - e.x) + (this.random() - .5) * .4;
   }
   tryRespawn(e) {
@@ -158,10 +244,15 @@ export class Simulation {
     }
     this.resolveCollisions();
     if (this.state !== 'playing') return;
+    this.updateBonusFruit(dt); this.updateTreasure(dt);
     for (let i = 0; i < this.food.length; i++) {
       const f = this.food[i];
-      if (distance(p, f) < p.radius + fruitRadius(f)) { this.foodEaten++; this.food[i] = this.newFood(); this.reward(fruitExperience(f), f.x, f.y, false, f); }
-      else for (const e of this.enemies) {
+      if (f.flight > 0) continue;
+      if (distance(p, f) < p.radius + fruitRadius(f)) {
+        this.foodEaten++;
+        if (f.bonus) { this.food.splice(i, 1); i--; } else this.food[i] = this.newFood();
+        this.reward(fruitExperience(f), f.x, f.y, false, f);
+      } else if (!f.bonus) for (const e of this.enemies) {
         if (e.active && distance(e, f) < e.radius + fruitRadius(f) - 2) {
           this.food[i] = this.newFood(); const next = addExperience(e.level, e.xp, fruitExperience(f));
           e.level = next.level; e.xp = next.xp; e.radius = radiusFor(e.level); break;
@@ -172,6 +263,8 @@ export class Simulation {
     this.particles = this.particles.filter(pt => pt.life > 0);
     for (const popup of this.popups) { popup.y -= dt * 15; popup.life -= dt; }
     this.popups = this.popups.filter(pt => pt.life > 0);
+    if (this.popups.length > CONFIG.maxPopups) this.popups.splice(0, this.popups.length - CONFIG.maxPopups);
+    for (const flower of this.flowers) flower.bloomTimer = Math.max(0, flower.bloomTimer - dt);
     const wanted = Math.min(CONFIG.maxEnemies, CONFIG.enemyCount + Math.floor((p.level - 1) / 5));
     if (this.enemies.length < wanted) {
       const i = this.enemies.length, e = makeSnake(0, 0, 0, 1, `enemy${i}`, CONFIG.enemyColors[i]);
