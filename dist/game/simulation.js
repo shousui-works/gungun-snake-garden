@@ -23,7 +23,7 @@ export function updateBody(snake) {
   while (result.length < count) result.push({ ...(result.at(-1)) });
   snake.body = result;
 }
-function moveSnake(s, dt, speed) {
+function moveSnake(s, dt, speed, turnSpeed = CONFIG.turnSpeed) {
   const margin = 85, size = CONFIG.worldSize;
   if (s.x < margin || s.x > size - margin || s.y < margin || s.y > size - margin) {
     const vx = Math.cos(s.targetAngle), vy = Math.sin(s.targetAngle);
@@ -31,7 +31,7 @@ function moveSnake(s, dt, speed) {
     const inwardY = s.y < margin ? 2.5 : s.y > size - margin ? -2.5 : 0;
     s.targetAngle = Math.atan2(vy + inwardY, vx + inwardX);
   }
-  s.angle += clamp(angleDifference(s.angle, s.targetAngle), -CONFIG.turnSpeed * dt, CONFIG.turnSpeed * dt);
+  s.angle += clamp(angleDifference(s.angle, s.targetAngle), -turnSpeed * dt, turnSpeed * dt);
   s.x = clamp(s.x + Math.cos(s.angle) * speed * dt, s.radius, size - s.radius);
   s.y = clamp(s.y + Math.sin(s.angle) * speed * dt, s.radius, size - s.radius);
   const point = { x: s.x, y: s.y };
@@ -151,7 +151,7 @@ export class Simulation {
     const p = this.player; p.bumpCooldown = Math.max(0, p.bumpCooldown - dt); p.chewTimer = Math.max(0, p.chewTimer - dt); p.growthTimer = Math.max(0, p.growthTimer - dt);
     if (this.time > this.comboUntil) this.combo = 0;
     if (inputAngle !== null) p.targetAngle = inputAngle;
-    moveSnake(p, dt, CONFIG.playerSpeed);
+    moveSnake(p, dt, CONFIG.playerSpeed, CONFIG.playerTurnSpeed);
     for (const e of this.enemies) {
       if (!e.active) { e.respawn -= dt; if (e.respawn <= 0) this.tryRespawn(e); continue; }
       this.updateEnemy(e, dt); moveSnake(e, dt, CONFIG.enemySpeed);

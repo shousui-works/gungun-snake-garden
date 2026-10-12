@@ -13,10 +13,14 @@ export class Renderer {
     const rect = this.canvas.getBoundingClientRect(); this.width = rect.width; this.height = rect.height;
     this.dpr = Math.min(window.devicePixelRatio || 1, 2);
     this.canvas.width = Math.round(this.width * this.dpr); this.canvas.height = Math.round(this.height * this.dpr);
-    this.scale = this.width < 650 ? .83 : 1.08;
+    this.scale = this.width < 650 ? 1.08 : Math.max(1.12, Math.min(this.width / 1200, this.height / 850));
     this.simulation.viewport = { width: this.width / this.scale, height: this.height / this.scale };
   }
-  resetCamera() { this.camera = { x: this.simulation.player.x, y: this.simulation.player.y }; }
+  resetCamera() { this.camera = { x: this.simulation.player.x, y: this.simulation.player.y }; this.directionCue = null; }
+  screenPosition(point) {
+    return { x: this.width / 2 + (point.x - this.camera.x) * this.scale, y: this.height / 2 + (point.y - this.camera.y) * this.scale, radius: (point.radius || 0) * this.scale };
+  }
+  showDirection(angle) { this.directionCue = { angle, life: .7 }; }
   visible(x, y, pad = 60) {
     return Math.abs(x - this.camera.x) < this.width / this.scale / 2 + pad && Math.abs(y - this.camera.y) < this.height / this.scale / 2 + pad;
   }
@@ -46,6 +50,15 @@ export class Renderer {
     this.drawSnake(p, true);
     for (const e of sim.enemies) if (e.active && this.visible(e.x, e.y)) this.drawLabel(e, false);
     this.drawLabel(p, true);
+    if (this.directionCue) {
+      this.directionCue.life -= dt;
+      if (this.directionCue.life <= 0 || sim.state !== 'playing') this.directionCue = null;
+      else {
+        c.save(); c.translate(p.x,p.y); c.rotate(this.directionCue.angle); c.globalAlpha = Math.min(1,this.directionCue.life*3);
+        c.strokeStyle='#fffbea'; c.lineWidth=4; c.lineCap='round'; c.beginPath(); c.moveTo(p.radius+18,0); c.lineTo(p.radius+46,0); c.stroke();
+        c.strokeStyle='#9876c3'; c.lineWidth=2; c.beginPath(); c.moveTo(p.radius+18,0); c.lineTo(p.radius+45,0); c.moveTo(p.radius+38,-6); c.lineTo(p.radius+45,0); c.lineTo(p.radius+38,6); c.stroke(); c.restore();
+      }
+    }
     for (const pt of sim.particles) {
       c.globalAlpha = Math.max(0, pt.life / pt.maxLife); c.fillStyle = pt.color; circle(c, pt.x, pt.y, pt.radius); c.fill();
     }

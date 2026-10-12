@@ -38,8 +38,8 @@
       </div>
 
       <div class="field" id="field">
-        <canvas id="game-canvas" aria-label="エサを食べてヘビを育てるゲーム。下の操作エリアか矢印キーで方向を変えます。">このゲームにはCanvas対応ブラウザが必要です。</canvas>
-        <div class="field-caption"><span class="little-dot"></span> きみの 小さなおにわ</div>
+        <canvas id="game-canvas" aria-label="ヘビの周りをタップすると、その方向に進みます。PCではクリック・矢印キー・WASDも使えます。">このゲームにはCanvas対応ブラウザが必要です。</canvas>
+        <div class="field-caption"><span class="little-dot"></span> ヘビの まわりを タップ！</div>
         <div class="legend" id="legend"><span><b class="relation edible">○</b>たべられる</span><span><b class="relation danger">!</b>つよいヘビ</span></div>
         <div class="appearance-badge hidden" id="appearance-badge"><svg aria-hidden="true"><use id="appearance-icon" href="#i-leaf"/></svg><div><strong id="appearance-name">むらさき</strong><small id="next-appearance">つぎの へんしん Lv.3</small></div></div>
         <div class="announcement" id="announcement" aria-live="polite"></div>
@@ -59,7 +59,7 @@
               <path d="M221 123q-1-19 13-26-2 17-13 26m0 0q-18-1-19-14 16 1 19 14" fill="#b7c8a1"/>
             </svg>
             <h2 id="start-title"><span>ぐんぐん</span> ヘビの庭</h2>
-            <p class="intro">フルーツを ぱくっ！<br>食べて、育って、へんしんしよう。</p>
+            <p class="intro">ヘビの まわりを タップ！<br>フルーツを食べて、へんしんしよう。</p>
             <button class="primary-button" id="start-button"><svg><use href="#i-play"/></svg>はじめる<svg class="button-arrow"><use href="#i-arrow"/></svg></button>
             <div class="start-tips transformation-tips"><span><svg><use href="#i-dots"/></svg> Lv.3 みずたま</span><span><svg><use href="#i-flower"/></svg> Lv.5 お花</span><span><svg><use href="#i-rainbow"/></svg> Lv.8 にじいろ</span></div>
           </section>
@@ -74,14 +74,7 @@
         </div>
       </div>
 
-      <div class="controls" id="controls" aria-label="指でなぞって方向を操作するエリア">
-        <div class="control-hint"><div class="hint-icon"><svg><use href="#i-leaf"/></svg></div><div><strong id="control-title">ここを なぞって うごかそう</strong><span>ゆびを はなしても すすむよ</span></div></div>
-        <div class="joystick-home" aria-hidden="true"><div class="direction top">↑</div><div class="direction right">→</div><div class="direction bottom">↓</div><div class="direction left">←</div><div class="joystick-dot"></div></div>
-        <div class="keyboard-hint"><div class="keycaps"><kbd>←</kbd><kbd>↑</kbd><kbd>↓</kbd><kbd>→</kbd></div><span>または W A S D</span></div>
-        <div class="touch-stick hidden" id="touch-stick" aria-hidden="true"><div id="touch-knob"></div></div>
-      </div>
     </section>
-    <footer class="page-footer"><span><svg><use href="#i-leaf"/></svg> あせらず、きみの ペースで。</span><span>広告・課金なし<span class="footer-dot">·</span>じかんせいげん なし</span></footer>
   </main>
   <script type="module" src="./game/main.js"></script>
 </body>

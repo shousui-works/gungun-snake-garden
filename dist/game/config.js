@@ -1,6 +1,7 @@
 export const CONFIG = Object.freeze({
   worldSize: 1600, foodCount: 80, enemyCount: 4, maxEnemies: 6,
   playerSpeed: 100, enemySpeed: 88, turnSpeed: 3.1,
+  playerTurnSpeed: 5.5, inputDeadZone: 12, pointerMoveDeadZone: 6,
   protectionSeconds: 5, respawnSeconds: 3, maxSegments: 40,
   bigFruitChance: .08, bigFruitScale: 1.5, bigFruitXp: 3,
   chewSeconds: .6, comboSeconds: 2.2, comboCap: 8, maxPopups: 12,

@@ -14,9 +14,9 @@ let best = Number.isFinite(bestValue) && bestValue > 0 ? Math.floor(bestValue) :
 const audio = new GameAudio(storage.get('snake-garden-sound', 'on') !== 'off');
 const sim = new Simulation();
 const renderer = new Renderer($('game-canvas'), sim);
-const input = new InputController($('controls'), sim, () => {
+const input = new InputController($('game-canvas'), sim, () => {
   if (sim.state === 'playing') pause(); else if (sim.state === 'paused') resume();
-});
+}, () => renderer.screenPosition(sim.player), angle => renderer.showDirection(angle));
 let announcementUntil = 0, lastHud = 0, previous = 0, frameId = 0, bestAtStart = best;
 function showMenu(id) {
   $('overlay').classList.toggle('hidden', !id);

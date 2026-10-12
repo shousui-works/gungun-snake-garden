@@ -53,7 +53,7 @@ test('restart restores every gameplay counter and initial protection', () => {
 });
 test('turns are gradual, edges are safe, and long frame deltas are capped', () => {
   const s = isolated(); const before = s.player.angle; s.step(20, Math.PI / 2);
-  assert.ok(Math.abs(s.player.angle - before) <= CONFIG.turnSpeed * .05 + .00001); assert.equal(s.time, .05);
+  assert.ok(Math.abs(s.player.angle - before) <= CONFIG.playerTurnSpeed * .05 + .00001); assert.equal(s.time, .05);
   s.player.x = 1585; s.player.y = 800; s.player.angle = 0;
   for (let i = 0; i < 250; i++) s.step(.05, 0);
   assert.equal(s.state, 'playing'); assert.ok(s.player.x <= 1600 - s.player.radius); assert.ok(s.player.x >= s.player.radius);
