@@ -36,7 +36,7 @@ test('only a stronger head can eat the player; its body is harmless', () => {
   s.resolveCollisions(); assert.equal(s.state, 'over');
 });
 test('food maintains its population and is not rewarded twice', () => {
-  const s = isolated(); s.food[0] = { x: s.player.x, y: s.player.y, phase: 0, color: 0 };
+  const s = isolated(); s.food[0] = { x: s.player.x, y: s.player.y, phase: 0, kind: 'apple', large: false };
   s.step(0); assert.equal(s.foodEaten, 1); assert.equal(s.player.xp, 1); assert.equal(s.food.length, 80);
   s.step(0); assert.equal(s.foodEaten, 1); assert.equal(s.player.xp, 1);
 });

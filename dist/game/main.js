@@ -2,7 +2,7 @@ import { Simulation } from './simulation.js';
 import { Renderer } from './renderer.js';
 import { InputController } from './input.js';
 import { GameAudio } from './audio.js';
-import { experienceNeeded } from './rules.js';
+import { experienceNeeded, appearanceFor, nextAppearance } from './rules.js';
 
 const $ = id => document.getElementById(id);
 const storage = {
@@ -23,6 +23,7 @@ function showMenu(id) {
   for (const menu of ['start-menu', 'pause-menu', 'end-menu']) $(menu).classList.toggle('hidden', id !== menu);
   $('pause-button').disabled = sim.state !== 'playing';
   $('legend').classList.toggle('hidden', Boolean(id));
+  $('appearance-badge').classList.toggle('hidden', Boolean(id));
 }
 function announce(text, seconds = 2.5) {
   $('announcement').textContent = text; announcementUntil = sim.time + seconds;
@@ -37,6 +38,11 @@ function updateHud() {
   $('shield').textContent = `★ まもられているよ ${Math.ceil(sim.protection)}`;
   if (p.level > best) { best = p.level; storage.set('snake-garden-best', best); }
   $('best-level').textContent = `Lv. ${best}`;
+  const style = appearanceFor(p.level), nextStyle = nextAppearance(p.level);
+  $('appearance-name').textContent = style.label;
+  $('appearance-icon').setAttribute('href', `#${style.icon}`);
+  $('next-appearance').textContent = nextStyle ? `つぎの へんしん Lv.${nextStyle.level}` : 'ぜんぶ へんしん！';
+  $('appearance-badge').setAttribute('aria-label', `${style.label}のヘビ。${nextStyle ? `レベル${nextStyle.level}で${nextStyle.label}に変身` : 'すべての変身を達成'}`);
 }
 function soundUi() {
   $('sound-button').setAttribute('aria-pressed', String(audio.enabled));
@@ -75,8 +81,8 @@ function frame(now) {
   const dt = previous ? Math.min((now - previous) / 1000, .05) : 0; previous = now;
   sim.step(dt, input.getAngle());
   for (const event of sim.events.splice(0)) {
-    audio.play(event.type);
-    if (event.type === 'level') { updateHud(); announce(`レベル ${event.level}！ ぐんぐん そだったね`, 2.3); }
+    audio.play(event.type, event);
+    if (event.type === 'level') { updateHud(); announce(event.style ? `★ ${event.style.label}に へんしん！` : `レベル ${event.level}！ ぐんぐん そだったね`, event.style ? 3.2 : 2.3); }
     if (event.type === 'over') finish();
   }
   if (sim.state === 'playing' && sim.time > announcementUntil) $('announcement').classList.remove('visible');

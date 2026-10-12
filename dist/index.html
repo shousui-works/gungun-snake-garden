@@ -19,6 +19,9 @@
     <symbol id="i-leaf" viewBox="0 0 24 24"><path d="M5 19C1 7 11 4 20 4c0 10-6 16-13 13m-3 4L16 9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
     <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14m-5-5 5 5-5 5" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></symbol>
     <symbol id="i-restart" viewBox="0 0 24 24"><path d="M4 10a8 8 0 1 1 1 7M4 4v6h6" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-dots" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="7" fill="#a58cde"/><g fill="#fff8ed"><circle cx="8" cy="8" r="2"/><circle cx="16" cy="15" r="2.4"/><circle cx="7" cy="17" r="1.5"/><circle cx="17" cy="6" r="1.4"/></g></symbol>
+    <symbol id="i-flower" viewBox="0 0 24 24"><g fill="#efa8b9"><ellipse cx="12" cy="6" rx="3.5" ry="5"/><ellipse cx="12" cy="18" rx="3.5" ry="5"/><ellipse cx="6.5" cy="9" rx="5" ry="3.5" transform="rotate(30 6.5 9)"/><ellipse cx="17.5" cy="15" rx="5" ry="3.5" transform="rotate(30 17.5 15)"/><ellipse cx="6.5" cy="15" rx="5" ry="3.5" transform="rotate(-30 6.5 15)"/><ellipse cx="17.5" cy="9" rx="5" ry="3.5" transform="rotate(-30 17.5 9)"/></g><circle cx="12" cy="12" r="4" fill="#f5d579"/></symbol>
+    <symbol id="i-rainbow" viewBox="0 0 24 24"><g fill="none" stroke-width="3" stroke-linecap="round"><path d="M3 19v-3a9 9 0 0 1 18 0v3" stroke="#ed95a5"/><path d="M6 19v-3a6 6 0 0 1 12 0v3" stroke="#edc766"/><path d="M9 19v-3a3 3 0 0 1 6 0v3" stroke="#8abda0"/></g></symbol>
   </svg>
   <main class="app">
     <header class="brand-bar">
@@ -38,6 +41,7 @@
         <canvas id="game-canvas" aria-label="エサを食べてヘビを育てるゲーム。下の操作エリアか矢印キーで方向を変えます。">このゲームにはCanvas対応ブラウザが必要です。</canvas>
         <div class="field-caption"><span class="little-dot"></span> きみの 小さなおにわ</div>
         <div class="legend" id="legend"><span><b class="relation edible">○</b>たべられる</span><span><b class="relation danger">!</b>つよいヘビ</span></div>
+        <div class="appearance-badge hidden" id="appearance-badge"><svg aria-hidden="true"><use id="appearance-icon" href="#i-leaf"/></svg><div><strong id="appearance-name">むらさき</strong><small id="next-appearance">つぎの へんしん Lv.3</small></div></div>
         <div class="announcement" id="announcement" aria-live="polite"></div>
         <div class="overlay" id="overlay">
           <section class="menu-card" id="start-menu" aria-labelledby="start-title">
@@ -50,14 +54,14 @@
               <ellipse cx="132" cy="50" rx="28" ry="25" transform="rotate(-12 132 50)" fill="#a58cde"/>
               <ellipse cx="122" cy="37" rx="8" ry="10" fill="white"/><ellipse cx="141" cy="34" rx="8" ry="10" fill="white"/><ellipse cx="124" cy="35" rx="3" ry="4" fill="#393c38"/><ellipse cx="143" cy="32" rx="3" ry="4" fill="#393c38"/>
               <path d="M126 57q10 7 17-3" fill="none" stroke="#7257b1" stroke-width="2.7" stroke-linecap="round"/><ellipse cx="114" cy="53" rx="5" ry="3" fill="#d3a6d5"/>
-              <circle cx="205" cy="49" r="12" fill="#e7b849"/><circle cx="205" cy="46" r="11" fill="#f3ce66"/><ellipse cx="202" cy="42" rx="3" ry="2" fill="#fff1bf"/><path d="M205 34q-1-10 10-10-1 10-10 10" fill="#85a86c"/>
+              <path d="M205 39q-3-10 0-12" fill="none" stroke="#947249" stroke-width="2.5" stroke-linecap="round"/><path d="M205 34q4-10 13-6-2 9-13 6" fill="#85a86c"/><path d="M205 39c-15-10-20 15-7 20q7 4 13-1c13-9 7-27-6-19" fill="#ed837d"/><path d="M198 43q-4 3-2 8" fill="none" stroke="#ffc6b7" stroke-width="3" stroke-linecap="round"/>
               <path d="m78 42 3-8 3 8 8 3-8 3-3 8-3-8-8-3zm109 29 2-5 2 5 5 2-5 2-2 5-2-5-5-2z" fill="#d3ba76"/>
               <path d="M221 123q-1-19 13-26-2 17-13 26m0 0q-18-1-19-14 16 1 19 14" fill="#b7c8a1"/>
             </svg>
             <h2 id="start-title"><span>ぐんぐん</span> ヘビの庭</h2>
-            <p class="intro">まるいエサを ぱくっ！<br>きみのヘビを 大きくしよう。</p>
+            <p class="intro">フルーツを ぱくっ！<br>食べて、育って、へんしんしよう。</p>
             <button class="primary-button" id="start-button"><svg><use href="#i-play"/></svg>はじめる<svg class="button-arrow"><use href="#i-arrow"/></svg></button>
-            <div class="start-tips"><span><i class="food-dot"></i> エサで せいちょう</span><span><b class="relation edible">○</b> 小さいヘビも ぱくっ</span></div>
+            <div class="start-tips transformation-tips"><span><svg><use href="#i-dots"/></svg> Lv.3 みずたま</span><span><svg><use href="#i-flower"/></svg> Lv.5 お花</span><span><svg><use href="#i-rainbow"/></svg> Lv.8 にじいろ</span></div>
           </section>
           <section class="menu-card compact hidden" id="pause-menu" aria-labelledby="pause-title">
             <div class="menu-symbol"><svg><use href="#i-pause"/></svg></div><div class="eyebrow">ちょっと ひとやすみ</div><h2 id="pause-title">ひとやすみ中</h2><p class="intro">おにわは 待っているよ。</p>

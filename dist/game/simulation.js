@@ -1,8 +1,8 @@
-import { CONFIG } from './config.js';
-import { addExperience, relation, radiusFor, segmentCount, distance, angleDifference, clamp } from './rules.js';
+import { CONFIG, FRUIT_KINDS, FRUITS } from './config.js';
+import { addExperience, relation, radiusFor, segmentCount, distance, angleDifference, clamp, fruitRadius, fruitExperience, unlockedAppearances } from './rules.js';
 
 export function makeSnake(x, y, angle, level, id, colors) {
-  const snake = { id, x, y, angle, targetAngle: angle, level, xp: 0, radius: radiusFor(level), colors, active: true, path: [], body: [], aiWait: 0, chaseTime: 0, chaseCooldown: 0, respawn: 0, bumpCooldown: 0 };
+  const snake = { id, x, y, angle, targetAngle: angle, level, xp: 0, radius: radiusFor(level), colors, active: true, path: [], body: [], aiWait: 0, chaseTime: 0, chaseCooldown: 0, respawn: 0, bumpCooldown: 0, chewTimer: 0, growthTimer: 0 };
   for (let d = 0; d <= 1400; d += 4) snake.path.push({ x: clamp(x - Math.cos(angle) * d, snake.radius, CONFIG.worldSize - snake.radius), y: clamp(y - Math.sin(angle) * d, snake.radius, CONFIG.worldSize - snake.radius) });
   updateBody(snake);
   return snake;
@@ -44,10 +44,10 @@ const touching = (head, body, radius) => body.some(point => distance(head, point
 export class Simulation {
   constructor(random = Math.random) { this.random = random; this.viewport = { width: 800, height: 500 }; this.reset(); }
   reset() {
-    this.state = 'ready'; this.time = 0; this.protection = CONFIG.protectionSeconds; this.foodEaten = 0; this.enemiesEaten = 0; this.events = []; this.particles = []; this.popups = [];
+    this.state = 'ready'; this.time = 0; this.protection = CONFIG.protectionSeconds; this.foodEaten = 0; this.enemiesEaten = 0; this.events = []; this.particles = []; this.popups = []; this.combo = 0; this.comboUntil = 0;
     this.player = makeSnake(800, 800, -Math.PI / 2, 1, 'player', [CONFIG.playerColor, CONFIG.playerDark]);
     this.food = [];
-    for (let i = 0; i < 7; i++) this.food.push({ x: 800 + Math.sin(i * .7) * 8, y: 754 - i * 43, phase: this.random() * 6, color: i % 3 });
+    for (let i = 0; i < 7; i++) this.food.push({ x: 800 + Math.sin(i * .7) * 8, y: 754 - i * 43, phase: this.random() * 6, kind: FRUIT_KINDS[i % 3], large: false });
     while (this.food.length < CONFIG.foodCount) this.food.push(this.newFood());
     this.enemies = [ [1120, 490], [480, 1150], [1220, 1140], [440, 420] ].map(([x, y], i) => makeSnake(x, y, this.random() * Math.PI * 2, [1, 1, 2, 3][i], `enemy${i}`, CONFIG.enemyColors[i]));
   }
@@ -60,15 +60,30 @@ export class Simulation {
       x = 45 + this.random() * (CONFIG.worldSize - 90); y = 45 + this.random() * (CONFIG.worldSize - 90);
       if (distance({ x, y }, this.player) > 90) break;
     }
-    return { x, y, phase: this.random() * Math.PI * 2, color: Math.floor(this.random() * 3) };
+    return { x, y, phase: this.random() * Math.PI * 2, kind: FRUIT_KINDS[Math.floor(this.random() * FRUIT_KINDS.length)], large: this.random() < CONFIG.bigFruitChance };
   }
-  reward(amount, x, y, enemy = false) {
-    const p = this.player, next = addExperience(p.level, p.xp, amount);
+  reward(amount, x, y, enemy = false, fruit = null) {
+    const p = this.player, previousLevel = p.level, next = addExperience(p.level, p.xp, amount);
     p.level = next.level; p.xp = next.xp; p.radius = radiusFor(p.level);
-    this.events.push({ type: next.gained ? 'level' : enemy ? 'enemy' : 'eat', level: p.level });
-    this.burst(x, y, next.gained ? 24 : enemy ? 18 : 8, next.gained ? '#b293eb' : '#f2ca5b');
-    if (next.gained) this.popups.push({ text: `レベル ${p.level}！`, x: p.x, y: p.y - 54, life: 1.7, maxLife: 1.7, large: true });
-    else if (enemy) this.popups.push({ text: `+${amount}`, x, y: y - 40, life: 1, maxLife: 1 });
+    p.chewTimer = CONFIG.chewSeconds;
+    if (fruit) {
+      this.combo = this.time <= this.comboUntil ? Math.min(this.combo + 1, CONFIG.comboCap) : 1;
+      this.comboUntil = this.time + CONFIG.comboSeconds;
+      this.events.push({ type: 'eat', combo: this.combo, kind: fruit.kind, large: fruit.large });
+      this.popups.push({ text: fruit.large ? `ぱくっ！ +${amount}` : this.combo >= 3 ? 'ぱくぱく！' : 'ぱくっ！', x: p.x + 43, y: p.y - 24, life: .75, maxLife: .75, bite: true });
+    } else if (enemy) {
+      this.events.push({ type: 'enemy' });
+      this.popups.push({ text: `+${amount}`, x, y: y - 40, life: 1, maxLife: 1 });
+    }
+    const unlocked = unlockedAppearances(previousLevel, p.level);
+    if (next.gained) {
+      const style = unlocked.at(-1) || null;
+      p.growthTimer = style ? 1.5 : .7;
+      this.events.push({ type: 'level', level: p.level, style, unlocked });
+      this.popups.push({ text: style ? `${style.label}に へんしん！` : `レベル ${p.level}！`, x: p.x, y: p.y - 75, life: 1.8, maxLife: 1.8, large: true });
+    }
+    this.burst(x, y, next.gained ? 24 : enemy || fruit?.large ? 18 : 8, next.gained ? '#b293eb' : (FRUITS[fruit?.kind] || FRUITS.banana).color);
+    if (this.popups.length > CONFIG.maxPopups) this.popups.splice(0, this.popups.length - CONFIG.maxPopups);
     updateBody(p);
   }
   burst(x, y, count, color) {
@@ -133,7 +148,8 @@ export class Simulation {
   step(delta, inputAngle = null) {
     if (this.state !== 'playing') return;
     const dt = clamp(delta, 0, .05); this.time += dt; this.protection = Math.max(0, this.protection - dt);
-    const p = this.player; p.bumpCooldown = Math.max(0, p.bumpCooldown - dt);
+    const p = this.player; p.bumpCooldown = Math.max(0, p.bumpCooldown - dt); p.chewTimer = Math.max(0, p.chewTimer - dt); p.growthTimer = Math.max(0, p.growthTimer - dt);
+    if (this.time > this.comboUntil) this.combo = 0;
     if (inputAngle !== null) p.targetAngle = inputAngle;
     moveSnake(p, dt, CONFIG.playerSpeed);
     for (const e of this.enemies) {
@@ -144,10 +160,10 @@ export class Simulation {
     if (this.state !== 'playing') return;
     for (let i = 0; i < this.food.length; i++) {
       const f = this.food[i];
-      if (distance(p, f) < p.radius + 9) { this.foodEaten++; this.food[i] = this.newFood(); this.reward(1, f.x, f.y); }
+      if (distance(p, f) < p.radius + fruitRadius(f)) { this.foodEaten++; this.food[i] = this.newFood(); this.reward(fruitExperience(f), f.x, f.y, false, f); }
       else for (const e of this.enemies) {
-        if (e.active && distance(e, f) < e.radius + 7) {
-          this.food[i] = this.newFood(); const next = addExperience(e.level, e.xp, 1);
+        if (e.active && distance(e, f) < e.radius + fruitRadius(f) - 2) {
+          this.food[i] = this.newFood(); const next = addExperience(e.level, e.xp, fruitExperience(f));
           e.level = next.level; e.xp = next.xp; e.radius = radiusFor(e.level); break;
         }
       }

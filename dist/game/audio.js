@@ -1,3 +1,4 @@
+import { eatPitch } from './rules.js';
 export class GameAudio {
   constructor(enabled) { this.enabled = enabled; this.context = null; this.active = 0; }
   init() {
@@ -17,8 +18,12 @@ export class GameAudio {
       o.onended = () => { o.disconnect(); gain.disconnect(); this.active--; };
     } catch { /* Audio failures never interrupt play. */ }
   }
-  play(type) {
-    if (type === 'eat') this.note(680 + Math.random() * 160);
+  play(type, event = {}) {
+    if (type === 'eat') {
+      this.note(170, 0, .055, .025);
+      this.note(eatPitch(event.combo || 1), .035, .14, .045);
+      if (event.large) this.note(eatPitch(event.combo || 1) * 1.5, .12, .17, .035);
+    }
     if (type === 'level') [523, 659, 784, 1046].forEach((freq, i) => this.note(freq, i * .095, .17));
     if (type === 'enemy') [440, 660, 880].forEach((freq, i) => this.note(freq, i * .07));
     if (type === 'start') [523, 784].forEach((freq, i) => this.note(freq, i * .1, .15));
