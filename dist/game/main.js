@@ -17,25 +17,23 @@ const renderer = new Renderer($('game-canvas'), sim);
 const input = new InputController($('game-canvas'), sim, () => {
   if (sim.state === 'playing') pause(); else if (sim.state === 'paused') resume();
 }, () => renderer.screenPosition(sim.player), angle => renderer.showDirection(angle));
-let announcementUntil = 0, lastHud = 0, previous = 0, frameId = 0, bestAtStart = best;
+let lastStatus = 0, previous = 0, frameId = 0, bestAtStart = best;
 function showMenu(id) {
   $('overlay').classList.toggle('hidden', !id);
   for (const menu of ['start-menu', 'pause-menu', 'end-menu']) $(menu).classList.toggle('hidden', id !== menu);
   $('pause-button').disabled = sim.state !== 'playing';
+  $('pause-button').classList.toggle('hidden', Boolean(id));
   $('legend').classList.toggle('hidden', Boolean(id));
   $('appearance-badge').classList.toggle('hidden', Boolean(id));
 }
-function announce(text, seconds = 2.5) {
-  $('announcement').textContent = text; announcementUntil = sim.time + seconds;
-  $('announcement').classList.add('visible');
+function announce(text) {
+  $('announcement').textContent = text;
 }
-function updateHud() {
+function updateStatus() {
   const p = sim.player, needed = experienceNeeded(p.level);
   $('level').textContent = p.level; $('xp-text').textContent = `${p.xp} / ${needed}`;
   $('xp-fill').style.width = `${p.xp / needed * 100}%`;
   const progress = document.querySelector('.progress'); progress.setAttribute('aria-valuemax', needed); progress.setAttribute('aria-valuenow', p.xp);
-  $('shield').classList.toggle('hidden', sim.protection <= 0 || sim.state !== 'playing');
-  $('shield').textContent = `★ まもられているよ ${Math.ceil(sim.protection)}`;
   if (p.level > best) { best = p.level; storage.set('snake-garden-best', best); }
   $('best-level').textContent = `Lv. ${best}`;
   const style = appearanceFor(p.level), nextStyle = nextAppearance(p.level);
@@ -51,19 +49,19 @@ function soundUi() {
 }
 function start() {
   bestAtStart = best; input.clear(); sim.reset(); sim.start(); renderer.resetCamera();
-  audio.init(); audio.play('start'); showMenu(null); updateHud();
-  document.activeElement?.blur(); announce('★ はじめの5びょうは まもられるよ', 5);
+  audio.init(); audio.play('start'); showMenu(null); updateStatus();
+  document.activeElement?.blur(); announce('★ はじめの5びょうは まもられるよ');
 }
 function pause() {
   if (sim.state !== 'playing') return;
-  sim.pause(); input.clear(); showMenu('pause-menu'); $('resume-button').focus({ preventScroll: true });
+  sim.pause(); input.clear(); updateStatus(); showMenu('pause-menu'); $('resume-button').focus({ preventScroll: true });
 }
 function resume() {
   if (sim.state !== 'paused') return;
   input.clear(); sim.resume(); audio.init(); showMenu(null); document.activeElement?.blur(); previous = performance.now();
 }
 function finish() {
-  input.clear(); updateHud(); $('announcement').classList.remove('visible');
+  input.clear(); updateStatus(); $('announcement').textContent = '';
   $('result-level').textContent = sim.player.level;
   $('end-eyebrow').textContent = sim.player.level > bestAtStart ? '★ さいこうレベル 更新！' : 'よく そだったね！';
   $('result-stats').textContent = `エサ ${sim.foodEaten}こ ・ ヘビ ${sim.enemiesEaten}ひき ぱくっ！`;
@@ -82,12 +80,11 @@ function frame(now) {
   sim.step(dt, input.getAngle());
   for (const event of sim.events.splice(0)) {
     audio.play(event.type, event);
-    if (event.type === 'level') { updateHud(); announce(event.style ? `★ ${event.style.label}に へんしん！` : `レベル ${event.level}！ ぐんぐん そだったね`, event.style ? 3.2 : 2.3); }
+    if (event.type === 'level') { updateStatus(); announce(event.style ? `★ ${event.style.label}に へんしん！` : `レベル ${event.level}！ ぐんぐん そだったね`); }
     if (event.type === 'over') finish();
   }
-  if (sim.state === 'playing' && sim.time > announcementUntil) $('announcement').classList.remove('visible');
-  if (now - lastHud > 120) { updateHud(); lastHud = now; }
+  if (now - lastStatus > 120) { updateStatus(); lastStatus = now; }
   renderer.draw(dt); frameId = requestAnimationFrame(frame);
 }
-soundUi(); updateHud(); showMenu('start-menu'); frameId = requestAnimationFrame(frame);
+soundUi(); updateStatus(); showMenu('start-menu'); frameId = requestAnimationFrame(frame);
 window.addEventListener('unload', () => { cancelAnimationFrame(frameId); renderer.destroy(); input.destroy(); audio.destroy(); });

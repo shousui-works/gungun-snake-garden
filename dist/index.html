@@ -24,25 +24,13 @@
     <symbol id="i-rainbow" viewBox="0 0 24 24"><g fill="none" stroke-width="3" stroke-linecap="round"><path d="M3 19v-3a9 9 0 0 1 18 0v3" stroke="#ed95a5"/><path d="M6 19v-3a6 6 0 0 1 12 0v3" stroke="#edc766"/><path d="M9 19v-3a3 3 0 0 1 6 0v3" stroke="#8abda0"/></g></symbol>
   </svg>
   <main class="app">
-    <header class="brand-bar">
-      <div class="brand"><svg class="brand-mark" viewBox="0 0 48 48" aria-hidden="true"><path d="M12 32h14c12 0 13-13 5-17" fill="none" stroke="#9b83db" stroke-width="13" stroke-linecap="round"/><ellipse cx="29" cy="15" rx="12" ry="10" fill="#9b83db"/><circle cx="26" cy="11" r="3.5" fill="#fff"/><circle cx="34" cy="11" r="3.5" fill="#fff"/><circle cx="27" cy="10.5" r="1.4" fill="#393c38"/><circle cx="35" cy="10.5" r="1.4" fill="#393c38"/><path d="M28 18q3 3 6 0" fill="none" stroke="#7257b1" stroke-width="1.5" stroke-linecap="round"/></svg><div><h1>ぐんぐん <span>ヘビの庭</span></h1><p>たべて、のびて、つよくなる。</p></div></div>
-      <div class="best-pill"><svg><use href="#i-star"/></svg><span>さいこう</span><strong id="best-level">Lv. 1</strong></div>
-    </header>
-
     <section class="game-shell" aria-label="ヘビの庭 ゲーム">
-      <div class="hud">
-        <div class="level-badge"><span>レベル</span><strong id="level">1</strong></div>
-        <div class="growth"><div class="growth-label"><span id="growth-text">つぎの レベルまで</span><strong id="xp-text">0 / 5</strong></div><div class="progress" role="progressbar" aria-label="つぎのレベルまでの経験値" aria-valuemin="0" aria-valuemax="5" aria-valuenow="0"><div id="xp-fill"></div></div></div>
-        <span class="shield" id="shield">★ まもられているよ</span>
-        <div class="hud-actions"><button class="icon-button" id="sound-button" aria-label="音をオフにする" aria-pressed="true"><svg><use href="#i-sound"/></svg></button><button class="icon-button" id="pause-button" aria-label="一時停止" disabled><svg><use href="#i-pause"/></svg></button></div>
-      </div>
-
       <div class="field" id="field">
         <canvas id="game-canvas" aria-label="ヘビの周りをタップすると、その方向に進みます。PCではクリック・矢印キー・WASDも使えます。">このゲームにはCanvas対応ブラウザが必要です。</canvas>
-        <div class="field-caption"><span class="little-dot"></span> ヘビの まわりを タップ！</div>
+        <div class="game-actions"><button class="icon-button" id="sound-button" aria-label="音をオフにする" aria-pressed="true"><svg aria-hidden="true"><use href="#i-sound"/></svg></button><button class="icon-button hidden" id="pause-button" aria-label="一時停止" disabled><svg aria-hidden="true"><use href="#i-pause"/></svg></button></div>
         <div class="legend" id="legend"><span><b class="relation edible">○</b>たべられる</span><span><b class="relation danger">!</b>つよいヘビ</span></div>
         <div class="appearance-badge hidden" id="appearance-badge"><svg aria-hidden="true"><use id="appearance-icon" href="#i-leaf"/></svg><div><strong id="appearance-name">むらさき</strong><small id="next-appearance">つぎの へんしん Lv.3</small></div></div>
-        <div class="announcement" id="announcement" aria-live="polite"></div>
+        <div class="sr-only" id="announcement" aria-live="polite" aria-atomic="true"></div>
         <div class="overlay" id="overlay">
           <section class="menu-card" id="start-menu" aria-labelledby="start-title">
             <div class="eyebrow"><svg><use href="#i-leaf"/></svg> おにわで すくすく</div>
@@ -59,12 +47,14 @@
               <path d="M221 123q-1-19 13-26-2 17-13 26m0 0q-18-1-19-14 16 1 19 14" fill="#b7c8a1"/>
             </svg>
             <h2 id="start-title"><span>ぐんぐん</span> ヘビの庭</h2>
+            <p class="best-record">★ さいこう <strong id="best-level">Lv. 1</strong></p>
             <p class="intro">ヘビの まわりを タップ！<br>フルーツを食べて、へんしんしよう。</p>
             <button class="primary-button" id="start-button"><svg><use href="#i-play"/></svg>はじめる<svg class="button-arrow"><use href="#i-arrow"/></svg></button>
             <div class="start-tips transformation-tips"><span><svg><use href="#i-dots"/></svg> Lv.3 みずたま</span><span><svg><use href="#i-flower"/></svg> Lv.5 お花</span><span><svg><use href="#i-rainbow"/></svg> Lv.8 にじいろ</span></div>
           </section>
           <section class="menu-card compact hidden" id="pause-menu" aria-labelledby="pause-title">
             <div class="menu-symbol"><svg><use href="#i-pause"/></svg></div><div class="eyebrow">ちょっと ひとやすみ</div><h2 id="pause-title">ひとやすみ中</h2><p class="intro">おにわは 待っているよ。</p>
+            <div class="pause-growth"><div class="growth-label"><span>レベル <strong id="level">1</strong></span><span>つぎまで <strong id="xp-text">0 / 5</strong></span></div><div class="progress" role="progressbar" aria-label="つぎのレベルまでの経験値" aria-valuemin="0" aria-valuemax="5" aria-valuenow="0"><div id="xp-fill"></div></div></div>
             <button class="primary-button" id="resume-button"><svg><use href="#i-play"/></svg>つづける</button><button class="secondary-button" id="restart-button"><svg><use href="#i-restart"/></svg>はじめから</button>
           </section>
           <section class="menu-card compact hidden" id="end-menu" aria-labelledby="end-title">
