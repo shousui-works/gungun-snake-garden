@@ -1,6 +1,11 @@
 import { CONFIG, FRUITS, RAINBOW_COLORS } from './config.js';
 import { relation, clamp, appearanceFor, experienceNeeded } from './rules.js';
 const FONT = '"Hiragino Maru Gothic ProN", "Yu Gothic", system-ui, sans-serif';
+const ENEMY_CUES = Object.freeze({
+  danger: { symbol: '!', edge: '#c77462', background: '#fff0e5', ink: '#ad4c38' },
+  edible: { symbol: '○', edge: '#6e9650', background: '#f8faee', ink: '#527d32' },
+  equal: { symbol: '＝', edge: '#a1aa92', background: '#f4f4ea', ink: '#7d896e' },
+});
 const circle = (c, x, y, r) => { c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); };
 function pill(c, x, y, w, h, r) { c.beginPath(); c.roundRect(x, y, w, h, r); }
 function star(c, x, y, radius) {
@@ -155,6 +160,7 @@ export class Renderer {
   }
   drawSnake(s, player) {
     const c = this.ctx, r = s.radius, count = s.body.length, style = player ? appearanceFor(s.level).id : 'plain';
+    const enemyCue = !player && !s.treasure ? ENEMY_CUES[relation(this.simulation.player.level, s.level)] : null;
     const rainbow = style === 'rainbow', hat = style === 'flower' || rainbow;
     const chew = player && s.chewTimer > 0 ? Math.sin((1 - s.chewTimer / CONFIG.chewSeconds) * Math.PI) : 0;
     if (s.treasure) {
@@ -174,6 +180,14 @@ export class Renderer {
       const size = r * (.58 + .42 * (1 - i / count));
       c.fillStyle = '#66805235'; circle(c, pt.x + 1, pt.y + 4, size + 1); c.fill();
     }
+    if (enemyCue) {
+      c.fillStyle = enemyCue.edge;
+      for (let i = count - 1; i >= 1; i--) {
+        const pt = s.body[i]; if (!this.visible(pt.x, pt.y, 45)) continue;
+        const size = r * (.58 + .42 * (1 - i / count));
+        circle(c, pt.x, pt.y, size + 2.4); c.fill();
+      }
+    }
     for (let i = count - 1; i >= 1; i--) {
       const pt = s.body[i]; if (!this.visible(pt.x, pt.y, 45)) continue;
       const size = r * (.58 + .42 * (1 - i / count));
@@ -187,6 +201,8 @@ export class Renderer {
       } else if (!player && s.level >= 4 && i % 2 === 0) { c.fillStyle = '#ffffff40'; circle(c, pt.x - size * .2, pt.y - size * .23, size * .45); c.fill(); }
       else { c.fillStyle = '#ffffff1a'; circle(c, pt.x - size * .22, pt.y - size * .25, size * .55); c.fill(); }
     }
+    // Body cues must be drawn even when the head is outside the field.
+    if (enemyCue) this.drawEnemyBodyMarkers(s, enemyCue);
     if (!this.visible(s.x, s.y)) return;
     c.save(); c.translate(s.x, s.y); c.rotate(s.angle); c.scale(1 + chew * .14, 1 + chew * .24);
     c.fillStyle = s.colors[1]; c.beginPath(); c.ellipse(0, 2, r * 1.13, r, 0, 0, Math.PI * 2); c.fill();
@@ -216,6 +232,33 @@ export class Renderer {
     if (!player && !s.treasure && relation(this.simulation.player.level, s.level) === 'danger') {
       c.strokeStyle = '#b96a5c77'; c.lineWidth = 1.8; circle(c, s.x, s.y, r + 5); c.stroke();
     }
+  }
+  drawEnemyBodyMarkers(s, cue = ENEMY_CUES[relation(this.simulation.player.level, s.level)]) {
+    const c = this.ctx, indices = [];
+    let run = [];
+    const finishRun = () => {
+      if (!run.length) return;
+      const regular = run.filter(i => (i - 2) % 4 === 0);
+      // A short visible tail between regular marks still gets one clear symbol.
+      indices.push(...(regular.length ? regular : [run[Math.floor(run.length / 2)]])); run = [];
+    };
+    for (let i = 1; i < s.body.length; i++) {
+      const point = this.screenPosition(s.body[i]);
+      if (point.x >= 0 && point.x <= this.width && point.y >= 0 && point.y <= this.height) run.push(i);
+      else finishRun();
+    }
+    finishRun();
+    if (!indices.length) return;
+    c.save(); c.textAlign = 'center'; c.textBaseline = 'middle'; c.lineWidth = 1.2;
+    for (const i of indices) {
+      const point = this.screenPosition(s.body[i]), bodyRadius = s.radius * (.58 + .42 * (1 - i / s.body.length));
+      const badgeRadius = clamp(bodyRadius * .65, 7.2, 9), margin = (badgeRadius + 2) * this.scale;
+      const x = this.camera.x + (clamp(point.x, margin, this.width - margin) - this.width / 2) / this.scale;
+      const y = this.camera.y + (clamp(point.y, margin, this.height - margin) - this.height / 2) / this.scale;
+      c.fillStyle = cue.background; c.strokeStyle = cue.edge; circle(c, x, y, badgeRadius); c.fill(); c.stroke();
+      c.font = `900 ${badgeRadius * 1.4}px ${FONT}`; c.fillStyle = cue.ink; c.fillText(cue.symbol, x, y + .3);
+    }
+    c.restore();
   }
   drawFlowerHat(s) {
     const c = this.ctx, r = s.radius; c.save(); c.translate(s.x - r*.12, s.y - r*.74); c.rotate(-.15);
