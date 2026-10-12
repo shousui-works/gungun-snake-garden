@@ -18,7 +18,7 @@ test('a consumed enemy rewards only once, including body contact', () => {
   const s = isolated(); s.player.level = 3; s.player.radius = radiusFor(3);
   const e = enemyAt(s, 1, s.player.x + 70); e.body[3] = { x: s.player.x, y: s.player.y }; s.enemies = [e];
   s.resolveCollisions(); s.resolveCollisions();
-  assert.equal(s.player.xp, 3); assert.equal(s.enemiesEaten, 1); assert.equal(e.active, false); assert.equal(e.respawn, 3);
+  assert.equal(s.player.xp, 3); assert.equal(s.enemiesEaten, 1); assert.equal(e.active, false); assert.equal(e.respawn, s.settings.respawnSeconds);
 });
 test('equal level collisions are harmless and cannot reward', () => {
   const s = isolated(); s.protection = 0; s.enemies = [enemyAt(s, 1)]; s.resolveCollisions();
@@ -49,7 +49,7 @@ test('pause freezes position, protection, XP, effects, and respawn', () => {
 test('restart restores every gameplay counter and initial protection', () => {
   const s = isolated(); s.player.level = 9; s.player.xp = 10; s.foodEaten = 15; s.enemiesEaten = 3; s.protection = 0; s.state = 'over'; s.burst(0, 0, 3, '#fff'); s.reset(); s.start();
   assert.equal(s.player.level, 1); assert.equal(s.player.xp, 0); assert.equal(s.foodEaten, 0); assert.equal(s.enemiesEaten, 0);
-  assert.equal(s.protection, 5); assert.equal(s.enemies.length, 4); assert.equal(s.food.length, 80); assert.equal(s.particles.length, 0);
+  assert.equal(s.protection, s.settings.protectionSeconds); assert.equal(s.enemies.length, s.settings.enemyCount); assert.equal(s.food.length, 80); assert.equal(s.particles.length, 0);
 });
 test('turns are gradual, edges are safe, and long frame deltas are capped', () => {
   const s = isolated(); const before = s.player.angle; s.step(20, Math.PI / 2);
@@ -60,19 +60,21 @@ test('turns are gradual, edges are safe, and long frame deltas are capped', () =
   assert.equal(s.state, 'playing'); assert.ok(s.player.x <= 1600 - s.player.radius); assert.ok(s.player.x >= s.player.radius);
 });
 test('movement is equally fast for the player and ordinary enemies at every level', () => {
-  const travelled = [];
-  for (const level of [1, 5, 12]) {
-    const s = isolated(); s.food = [];
-    s.player = makeSnake(300, 500, 0, level, 'player', [CONFIG.playerColor, CONFIG.playerDark]);
-    const e = makeSnake(300, 1100, 0, level, 'test', CONFIG.enemyColors[0]); e.aiWait = 100; s.enemies = [e];
-    const playerStart = { x: s.player.x, y: s.player.y }, enemyStart = { x: e.x, y: e.y };
-    for (let i = 0; i < 10; i++) s.step(.05, 0);
-    const playerDistance = distance(s.player, playerStart), enemyDistance = distance(e, enemyStart);
-    assert.ok(Math.abs(playerDistance - CONFIG.snakeSpeed * .5) < .001);
-    assert.ok(Math.abs(playerDistance - enemyDistance) < .001);
-    travelled.push(playerDistance);
+  for (const difficulty of ['easy', 'normal', 'hard']) {
+    const travelled = [];
+    for (const level of [1, 5, 12]) {
+      const s = new Simulation(seeded(), difficulty); s.start(); s.food = [];
+      s.player = makeSnake(300, 500, 0, level, 'player', [CONFIG.playerColor, CONFIG.playerDark]);
+      const e = makeSnake(300, 1100, 0, level, 'test', CONFIG.enemyColors[0]); e.aiWait = 100; s.enemies = [e];
+      const playerStart = { x: s.player.x, y: s.player.y }, enemyStart = { x: e.x, y: e.y };
+      for (let i = 0; i < 10; i++) s.step(.05, 0);
+      const playerDistance = distance(s.player, playerStart), enemyDistance = distance(e, enemyStart);
+      assert.ok(Math.abs(playerDistance - s.settings.speed * .5) < .001);
+      assert.ok(Math.abs(playerDistance - enemyDistance) < .001);
+      travelled.push(playerDistance);
+    }
+    assert.deepEqual(travelled, [travelled[0], travelled[0], travelled[0]]);
   }
-  assert.deepEqual(travelled, [travelled[0], travelled[0], travelled[0]]);
 });
 test('body spacing is based on distance and history stays bounded at high frame rates', () => {
   const s = isolated(); s.food = s.food.map(f => ({ ...f, x: 20, y: 20 }));
@@ -90,7 +92,7 @@ test('respawn stays away from the player and outside the entire viewport', () =>
   assert.ok(e.body.every(pt => Math.abs(pt.x - s.player.x) >= hw || Math.abs(pt.y - s.player.y) >= hh));
 });
 test('five minute maximum population run keeps entities and effects bounded', () => {
-  const s = new Simulation(seeded()); s.start(); s.player.level = 16; s.player.radius = radiusFor(16); s.protection = 1000;
+  const s = new Simulation(seeded(), 'hard'); s.start(); s.player.level = 16; s.player.radius = radiusFor(16); s.protection = 1000;
   for (let i = 0; i < 18000; i++) {
     s.step(1 / 60, i / 200); s.events.length = 0;
   }

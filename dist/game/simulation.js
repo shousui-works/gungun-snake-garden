@@ -1,4 +1,4 @@
-import { CONFIG, FRUIT_KINDS, FRUITS } from './config.js';
+import { CONFIG, DIFFICULTIES, FRUIT_KINDS, FRUITS } from './config.js';
 import { addExperience, relation, radiusFor, segmentCount, distance, angleDifference, clamp, fruitRadius, fruitExperience, unlockedAppearances } from './rules.js';
 
 export function makeSnake(x, y, angle, level, id, colors) {
@@ -42,9 +42,10 @@ function moveSnake(s, dt, speed, turnSpeed = CONFIG.turnSpeed) {
 const touching = (head, body, radius) => body.some(point => distance(head, point) < radius);
 
 export class Simulation {
-  constructor(random = Math.random) { this.random = random; this.viewport = { width: 800, height: 500 }; this.reset(); }
-  reset() {
-    this.state = 'ready'; this.time = 0; this.protection = CONFIG.protectionSeconds; this.foodEaten = 0; this.enemiesEaten = 0; this.events = []; this.particles = []; this.popups = []; this.combo = 0; this.comboUntil = 0;
+  constructor(random = Math.random, difficulty = 'normal') { this.random = random; this.viewport = { width: 800, height: 500 }; this.reset(difficulty); }
+  reset(difficulty = this.difficulty ?? 'normal') {
+    this.difficulty = Object.hasOwn(DIFFICULTIES, difficulty) ? difficulty : 'normal'; this.settings = DIFFICULTIES[this.difficulty];
+    this.state = 'ready'; this.time = 0; this.protection = this.settings.protectionSeconds; this.foodEaten = 0; this.enemiesEaten = 0; this.events = []; this.particles = []; this.popups = []; this.combo = 0; this.comboUntil = 0;
     this.flowers ??= []; this.gardenRevision ??= 0;
     for (const flower of this.flowers) flower.bloomTimer = 0;
     this.flowersPlanted = 0; this.treasuresCaught = 0; this.treasure = null; this.treasureNextAt = CONFIG.treasureFirstSeconds;
@@ -52,7 +53,7 @@ export class Simulation {
     this.food = [];
     for (let i = 0; i < 7; i++) this.food.push({ x: 800 + Math.sin(i * .7) * 8, y: 754 - i * 43, phase: this.random() * 6, kind: FRUIT_KINDS[i % 3], large: false });
     while (this.food.length < CONFIG.foodCount) this.food.push(this.newFood());
-    this.enemies = [ [1120, 490], [480, 1150], [1220, 1140], [440, 420] ].map(([x, y], i) => makeSnake(x, y, this.random() * Math.PI * 2, [1, 1, 2, 3][i], `enemy${i}`, CONFIG.enemyColors[i]));
+    this.enemies = [ [1120, 490], [480, 1150], [1220, 1140], [440, 420] ].slice(0, this.settings.enemyCount).map(([x, y], i) => makeSnake(x, y, this.random() * Math.PI * 2, this.settings.enemyLevels[i], `enemy${i}`, CONFIG.enemyColors[i]));
   }
   start() { this.state = 'playing'; }
   pause() { if (this.state === 'playing') this.state = 'paused'; }
@@ -119,7 +120,8 @@ export class Simulation {
       const avoid = danger || p;
       t.targetAngle = gap > 300 && !danger ? Math.atan2(p.y - t.y, p.x - t.x) : Math.atan2(t.y - avoid.y, t.x - avoid.x) + Math.sin(this.time * 2.1) * .28;
     }
-    moveSnake(t, dt, CONFIG.treasureSpeed, CONFIG.treasureTurnSpeed); t.body.length = 5;
+    const speedScale = this.settings.speed / CONFIG.snakeSpeed;
+    moveSnake(t, dt, CONFIG.treasureSpeed * speedScale, CONFIG.treasureTurnSpeed * speedScale); t.body.length = 5;
     if (touching(p, t.body, p.radius + t.radius)) this.catchTreasure();
   }
   catchTreasure() {
@@ -180,13 +182,13 @@ export class Simulation {
   updateEnemy(e, dt) {
     e.aiWait -= dt; e.chaseCooldown = Math.max(0, e.chaseCooldown - dt);
     if (e.aiWait > 0) return;
-    e.aiWait = .22 + this.random() * .15;
+    e.aiWait = this.settings.aiWait + this.random() * this.settings.aiJitter;
     const stronger = [this.player, ...this.enemies].filter(s => s !== e && s.active && s.level > e.level && distance(s, e) < 200).sort((a, b) => distance(a, e) - distance(b, e))[0];
     if (stronger) { e.targetAngle = Math.atan2(e.y - stronger.y, e.x - stronger.x); e.chaseTime = 0; return; }
-    if (e.level > this.player.level && this.protection <= 0 && distance(e, this.player) < 175 && e.chaseCooldown <= 0) {
+    if (e.level > this.player.level && this.protection <= 0 && distance(e, this.player) < this.settings.chaseRange && e.chaseCooldown <= 0) {
       e.chaseTime += e.aiWait;
       e.targetAngle = Math.atan2(this.player.y - e.y, this.player.x - e.x);
-      if (e.chaseTime > 2) { e.chaseCooldown = 5; e.chaseTime = 0; }
+      if (e.chaseTime > this.settings.chaseSeconds) { e.chaseCooldown = this.settings.chaseCooldown; e.chaseTime = 0; }
       return;
     }
     e.chaseTime = 0;
@@ -200,7 +202,7 @@ export class Simulation {
     for (let i = 0; i < 35; i++) {
       const x = 130 + this.random() * 1340, y = 130 + this.random() * 1340;
       if (distance({ x, y }, p) < 420 || (Math.abs(x - p.x) < halfW && Math.abs(y - p.y) < halfH)) continue;
-      const offset = this.random() < .65 ? -(1 + Math.floor(this.random() * 2)) : 1 + Math.floor(this.random() * 2);
+      const offset = this.random() < 1 - this.settings.strongChance ? -(1 + Math.floor(this.random() * 2)) : 1 + Math.floor(this.random() * this.settings.strongOffsetMax);
       const angle = Math.atan2(800 - y, 800 - x);
       const fresh = makeSnake(x, y, angle, Math.max(1, p.level + offset), e.id, e.colors);
       // Keep the full new body outside the viewport, not just its head.
@@ -216,7 +218,7 @@ export class Simulation {
       if (!e.active) continue;
       const mode = relation(p.level, e.level), radius = p.radius + e.radius - 2;
       if (mode === 'edible' && touching(p, e.body, radius)) {
-        e.active = false; e.respawn = CONFIG.respawnSeconds; this.enemiesEaten++;
+        e.active = false; e.respawn = this.settings.respawnSeconds; this.enemiesEaten++;
         this.reward(e.level * 3, e.x, e.y, true); continue;
       }
       if (mode === 'danger' && this.protection <= 0 && touching(e, p.body, radius)) {
@@ -237,10 +239,11 @@ export class Simulation {
     const p = this.player; p.bumpCooldown = Math.max(0, p.bumpCooldown - dt); p.chewTimer = Math.max(0, p.chewTimer - dt); p.growthTimer = Math.max(0, p.growthTimer - dt);
     if (this.time > this.comboUntil) this.combo = 0;
     if (inputAngle !== null) p.targetAngle = inputAngle;
-    moveSnake(p, dt, CONFIG.snakeSpeed, CONFIG.playerTurnSpeed);
+    const speedScale = this.settings.speed / CONFIG.snakeSpeed;
+    moveSnake(p, dt, this.settings.speed, CONFIG.playerTurnSpeed * speedScale);
     for (const e of this.enemies) {
       if (!e.active) { e.respawn -= dt; if (e.respawn <= 0) this.tryRespawn(e); continue; }
-      this.updateEnemy(e, dt); moveSnake(e, dt, CONFIG.snakeSpeed);
+      this.updateEnemy(e, dt); moveSnake(e, dt, this.settings.speed, CONFIG.turnSpeed * speedScale);
     }
     this.resolveCollisions();
     if (this.state !== 'playing') return;
@@ -265,7 +268,7 @@ export class Simulation {
     this.popups = this.popups.filter(pt => pt.life > 0);
     if (this.popups.length > CONFIG.maxPopups) this.popups.splice(0, this.popups.length - CONFIG.maxPopups);
     for (const flower of this.flowers) flower.bloomTimer = Math.max(0, flower.bloomTimer - dt);
-    const wanted = Math.min(CONFIG.maxEnemies, CONFIG.enemyCount + Math.floor((p.level - 1) / 5));
+    const wanted = Math.min(this.settings.maxEnemies, this.settings.enemyCount + Math.floor((p.level - 1) / 5));
     if (this.enemies.length < wanted) {
       const i = this.enemies.length, e = makeSnake(0, 0, 0, 1, `enemy${i}`, CONFIG.enemyColors[i]);
       e.active = false; e.respawn = 1; this.enemies.push(e);

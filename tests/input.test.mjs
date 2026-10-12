@@ -64,6 +64,17 @@ test('keyboard diagonals still work and releasing keys does not restore an old t
   assert.equal(input.getAngle(),-Math.PI/4); send(window,'keyup',{key:'w'}); assert.equal(input.getAngle(),0);
   send(window,'keyup',{key:'ArrowRight'}); assert.equal(input.getAngle(),null); finish();
 });
+test('menu arrow keys stay available for native difficulty radio navigation', () => {
+  const { input,sim,finish } = setup({ state: 'ready' });
+  for (const state of ['ready', 'paused', 'over']) {
+    sim.state = state;
+    const e = new Event('keydown', { cancelable: true }); Object.assign(e, { key: 'ArrowRight' }); window.dispatchEvent(e);
+    assert.equal(e.defaultPrevented, false); assert.equal(input.keys.size, 0);
+  }
+  sim.state = 'playing';
+  const e = new Event('keydown', { cancelable: true }); Object.assign(e, { key: 'ArrowRight' }); window.dispatchEvent(e);
+  assert.equal(e.defaultPrevented, true); assert.equal(input.getAngle(), 0); finish();
+});
 test('projection includes camera offset and CSS zoom instead of assuming a centered head', () => {
   const renderer = Object.create(Renderer.prototype);
   Object.assign(renderer,{width:800,height:500,scale:1.25,camera:{x:200,y:140}});

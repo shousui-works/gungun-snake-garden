@@ -24,8 +24,9 @@ export class InputController {
       const key = e.key.toLowerCase();
       if (key === 'escape' && !e.repeat) { onPause(); return; }
       if (!['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd'].includes(key) || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (simulation.state !== 'playing') return;
       e.preventDefault();
-      if (simulation.state === 'playing') { this.pendingAngle = null; this.keys.add(key); }
+      this.pendingAngle = null; this.keys.add(key);
     });
     on(window, 'keyup', e => this.keys.delete(e.key.toLowerCase()));
     on(window, 'blur', () => this.clear());

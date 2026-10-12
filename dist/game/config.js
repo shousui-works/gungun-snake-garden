@@ -11,6 +11,26 @@ export const CONFIG = Object.freeze({
   playerColor: '#9b83db', playerDark: '#7257b1',
   enemyColors: [ ['#79bea6', '#3f8870'], ['#edb674', '#b57d3b'], ['#74b8d5', '#367f9f'], ['#e99691', '#ae555f'], ['#9bbd76', '#638a3f'], ['#c7a0c9', '#936b96'] ],
 });
+export const DIFFICULTIES = Object.freeze({
+  easy: Object.freeze({
+    label: 'やさしい', description: 'ゆったり進む・敵はひかえめ', speed: 115,
+    enemyCount: 3, maxEnemies: 4, enemyLevels: Object.freeze([1, 1, 2]),
+    protectionSeconds: 8, respawnSeconds: 4.5, strongChance: .15, strongOffsetMax: 1,
+    chaseRange: 125, chaseSeconds: .8, chaseCooldown: 7, aiWait: .28, aiJitter: .18,
+  }),
+  normal: Object.freeze({
+    label: 'ふつう', description: 'ほどよい速さで楽しもう', speed: 130,
+    enemyCount: 4, maxEnemies: 5, enemyLevels: Object.freeze([1, 1, 2, 3]),
+    protectionSeconds: 6, respawnSeconds: 3.5, strongChance: .25, strongOffsetMax: 2,
+    chaseRange: 145, chaseSeconds: 1.25, chaseCooldown: 6, aiWait: .25, aiJitter: .15,
+  }),
+  hard: Object.freeze({
+    label: 'むずかしい', description: 'スピーディ・敵も手ごわい', speed: CONFIG.snakeSpeed,
+    enemyCount: CONFIG.enemyCount, maxEnemies: CONFIG.maxEnemies, enemyLevels: Object.freeze([1, 1, 2, 3]),
+    protectionSeconds: CONFIG.protectionSeconds, respawnSeconds: CONFIG.respawnSeconds, strongChance: .35, strongOffsetMax: 2,
+    chaseRange: 175, chaseSeconds: 2, chaseCooldown: 5, aiWait: .22, aiJitter: .15,
+  }),
+});
 export const FRUITS = Object.freeze({
   apple: Object.freeze({ label: 'りんご', color: '#ed837d', radius: 10 }),
   banana: Object.freeze({ label: 'バナナ', color: '#f2cc5d', radius: 11 }),
