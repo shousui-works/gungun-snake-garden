@@ -119,7 +119,7 @@ export class Simulation {
       const avoid = danger || p;
       t.targetAngle = gap > 300 && !danger ? Math.atan2(p.y - t.y, p.x - t.x) : Math.atan2(t.y - avoid.y, t.x - avoid.x) + Math.sin(this.time * 2.1) * .28;
     }
-    moveSnake(t, dt, CONFIG.treasureSpeed, 4); t.body.length = 5;
+    moveSnake(t, dt, CONFIG.treasureSpeed, CONFIG.treasureTurnSpeed); t.body.length = 5;
     if (touching(p, t.body, p.radius + t.radius)) this.catchTreasure();
   }
   catchTreasure() {
@@ -180,7 +180,7 @@ export class Simulation {
   updateEnemy(e, dt) {
     e.aiWait -= dt; e.chaseCooldown = Math.max(0, e.chaseCooldown - dt);
     if (e.aiWait > 0) return;
-    e.aiWait = .35 + this.random() * .25;
+    e.aiWait = .22 + this.random() * .15;
     const stronger = [this.player, ...this.enemies].filter(s => s !== e && s.active && s.level > e.level && distance(s, e) < 200).sort((a, b) => distance(a, e) - distance(b, e))[0];
     if (stronger) { e.targetAngle = Math.atan2(e.y - stronger.y, e.x - stronger.x); e.chaseTime = 0; return; }
     if (e.level > this.player.level && this.protection <= 0 && distance(e, this.player) < 175 && e.chaseCooldown <= 0) {
@@ -237,10 +237,10 @@ export class Simulation {
     const p = this.player; p.bumpCooldown = Math.max(0, p.bumpCooldown - dt); p.chewTimer = Math.max(0, p.chewTimer - dt); p.growthTimer = Math.max(0, p.growthTimer - dt);
     if (this.time > this.comboUntil) this.combo = 0;
     if (inputAngle !== null) p.targetAngle = inputAngle;
-    moveSnake(p, dt, CONFIG.playerSpeed, CONFIG.playerTurnSpeed);
+    moveSnake(p, dt, CONFIG.snakeSpeed, CONFIG.playerTurnSpeed);
     for (const e of this.enemies) {
       if (!e.active) { e.respawn -= dt; if (e.respawn <= 0) this.tryRespawn(e); continue; }
-      this.updateEnemy(e, dt); moveSnake(e, dt, CONFIG.enemySpeed);
+      this.updateEnemy(e, dt); moveSnake(e, dt, CONFIG.snakeSpeed);
     }
     this.resolveCollisions();
     if (this.state !== 'playing') return;

@@ -55,8 +55,24 @@ test('turns are gradual, edges are safe, and long frame deltas are capped', () =
   const s = isolated(); const before = s.player.angle; s.step(20, Math.PI / 2);
   assert.ok(Math.abs(s.player.angle - before) <= CONFIG.playerTurnSpeed * .05 + .00001); assert.equal(s.time, .05);
   s.player.x = 1585; s.player.y = 800; s.player.angle = 0;
-  for (let i = 0; i < 250; i++) s.step(.05, 0);
+  // Keep spawned enemies out of this check of wall movement.
+  for (let i = 0; i < 250; i++) { s.enemies = []; s.step(.05, 0); }
   assert.equal(s.state, 'playing'); assert.ok(s.player.x <= 1600 - s.player.radius); assert.ok(s.player.x >= s.player.radius);
+});
+test('movement is equally fast for the player and ordinary enemies at every level', () => {
+  const travelled = [];
+  for (const level of [1, 5, 12]) {
+    const s = isolated(); s.food = [];
+    s.player = makeSnake(300, 500, 0, level, 'player', [CONFIG.playerColor, CONFIG.playerDark]);
+    const e = makeSnake(300, 1100, 0, level, 'test', CONFIG.enemyColors[0]); e.aiWait = 100; s.enemies = [e];
+    const playerStart = { x: s.player.x, y: s.player.y }, enemyStart = { x: e.x, y: e.y };
+    for (let i = 0; i < 10; i++) s.step(.05, 0);
+    const playerDistance = distance(s.player, playerStart), enemyDistance = distance(e, enemyStart);
+    assert.ok(Math.abs(playerDistance - CONFIG.snakeSpeed * .5) < .001);
+    assert.ok(Math.abs(playerDistance - enemyDistance) < .001);
+    travelled.push(playerDistance);
+  }
+  assert.deepEqual(travelled, [travelled[0], travelled[0], travelled[0]]);
 });
 test('body spacing is based on distance and history stays bounded at high frame rates', () => {
   const s = isolated(); s.food = s.food.map(f => ({ ...f, x: 20, y: 20 }));

@@ -29,7 +29,7 @@ test('treasure appears nearby after the opening and retries unsafe spawn locatio
 test('treasure flees the approaching player, stays catchable and is harmless at level one', () => {
   const s = isolated(), t = treasureAt(s, s.player.x + 110, s.player.y); t.body = [{ x: t.x, y: t.y }];
   s.updateTreasure(.05);
-  assert.ok(t.x > s.player.x + 110); assert.ok(CONFIG.treasureSpeed < CONFIG.playerSpeed);
+  assert.ok(t.x > s.player.x + 110); assert.ok(CONFIG.treasureSpeed < CONFIG.snakeSpeed);
   assert.equal(s.state, 'playing'); assert.equal(s.player.level, 1);
   t.x = s.player.x; t.y = s.player.y; t.body = [{ x: t.x, y: t.y }];
   s.updateTreasure(0); assert.equal(s.treasuresCaught, 1); assert.equal(s.state, 'playing');
