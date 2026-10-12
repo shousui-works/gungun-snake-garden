@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#f7f6ee">
+  <meta name="description" content="たべて、のびて、つよくなる。指ひとつで遊べる、子ども向けのやさしいヘビ成長ゲーム。">
+  <title>ぐんぐん ヘビの庭</title>
+  <link rel="icon" href="./icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <svg class="svg-defs" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+    <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="m8 5 11 7-11 7z" fill="currentColor" stroke="currentColor" stroke-linejoin="round"/></symbol>
+    <symbol id="i-sound" viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4zM17 8q4 4 0 8M20 5q7 7 0 14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round"/></symbol>
+    <symbol id="i-mute" viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4zM17 9l5 6m0-6-5 6" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24"><path d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z" fill="currentColor"/></symbol>
+    <symbol id="i-leaf" viewBox="0 0 24 24"><path d="M5 19C1 7 11 4 20 4c0 10-6 16-13 13m-3 4L16 9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14m-5-5 5 5-5 5" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-restart" viewBox="0 0 24 24"><path d="M4 10a8 8 0 1 1 1 7M4 4v6h6" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  </svg>
+  <main class="app">
+    <header class="brand-bar">
+      <div class="brand"><svg class="brand-mark" viewBox="0 0 48 48" aria-hidden="true"><path d="M12 32h14c12 0 13-13 5-17" fill="none" stroke="#9b83db" stroke-width="13" stroke-linecap="round"/><ellipse cx="29" cy="15" rx="12" ry="10" fill="#9b83db"/><circle cx="26" cy="11" r="3.5" fill="#fff"/><circle cx="34" cy="11" r="3.5" fill="#fff"/><circle cx="27" cy="10.5" r="1.4" fill="#393c38"/><circle cx="35" cy="10.5" r="1.4" fill="#393c38"/><path d="M28 18q3 3 6 0" fill="none" stroke="#7257b1" stroke-width="1.5" stroke-linecap="round"/></svg><div><h1>ぐんぐん <span>ヘビの庭</span></h1><p>たべて、のびて、つよくなる。</p></div></div>
+      <div class="best-pill"><svg><use href="#i-star"/></svg><span>さいこう</span><strong id="best-level">Lv. 1</strong></div>
+    </header>
+
+    <section class="game-shell" aria-label="ヘビの庭 ゲーム">
+      <div class="hud">
+        <div class="level-badge"><span>レベル</span><strong id="level">1</strong></div>
+        <div class="growth"><div class="growth-label"><span id="growth-text">つぎの レベルまで</span><strong id="xp-text">0 / 5</strong></div><div class="progress" role="progressbar" aria-label="つぎのレベルまでの経験値" aria-valuemin="0" aria-valuemax="5" aria-valuenow="0"><div id="xp-fill"></div></div></div>
+        <span class="shield" id="shield">★ まもられているよ</span>
+        <div class="hud-actions"><button class="icon-button" id="sound-button" aria-label="音をオフにする" aria-pressed="true"><svg><use href="#i-sound"/></svg></button><button class="icon-button" id="pause-button" aria-label="一時停止" disabled><svg><use href="#i-pause"/></svg></button></div>
+      </div>
+
+      <div class="field" id="field">
+        <canvas id="game-canvas" aria-label="エサを食べてヘビを育てるゲーム。下の操作エリアか矢印キーで方向を変えます。">このゲームにはCanvas対応ブラウザが必要です。</canvas>
+        <div class="field-caption"><span class="little-dot"></span> きみの 小さなおにわ</div>
+        <div class="legend" id="legend"><span><b class="relation edible">○</b>たべられる</span><span><b class="relation danger">!</b>つよいヘビ</span></div>
+        <div class="announcement" id="announcement" aria-live="polite"></div>
+        <div class="overlay" id="overlay">
+          <section class="menu-card" id="start-menu" aria-labelledby="start-title">
+            <div class="eyebrow"><svg><use href="#i-leaf"/></svg> おにわで すくすく</div>
+            <svg class="hero-snake" viewBox="0 0 280 152" aria-hidden="true">
+              <ellipse cx="139" cy="132" rx="87" ry="10" fill="#e8ecdc"/>
+              <path d="M59 120c-20-24 2-44 27-29 28 18 60 42 87 21 18-14 7-31-13-27-28 6-38-13-33-30" fill="none" stroke="#7257b1" stroke-width="31" stroke-linecap="round"/>
+              <path d="M59 116c-20-24 2-44 27-29 28 18 60 42 87 21 18-14 7-31-13-27-28 6-38-13-33-30" fill="none" stroke="#a58cde" stroke-width="28" stroke-linecap="round"/>
+              <path d="M99 96l-10 16m27-5-5 16m27-13 3 17m19-20 7 13" stroke="#c4afea" stroke-width="7" stroke-linecap="round"/>
+              <ellipse cx="132" cy="50" rx="28" ry="25" transform="rotate(-12 132 50)" fill="#a58cde"/>
+              <ellipse cx="122" cy="37" rx="8" ry="10" fill="white"/><ellipse cx="141" cy="34" rx="8" ry="10" fill="white"/><ellipse cx="124" cy="35" rx="3" ry="4" fill="#393c38"/><ellipse cx="143" cy="32" rx="3" ry="4" fill="#393c38"/>
+              <path d="M126 57q10 7 17-3" fill="none" stroke="#7257b1" stroke-width="2.7" stroke-linecap="round"/><ellipse cx="114" cy="53" rx="5" ry="3" fill="#d3a6d5"/>
+              <circle cx="205" cy="49" r="12" fill="#e7b849"/><circle cx="205" cy="46" r="11" fill="#f3ce66"/><ellipse cx="202" cy="42" rx="3" ry="2" fill="#fff1bf"/><path d="M205 34q-1-10 10-10-1 10-10 10" fill="#85a86c"/>
+              <path d="m78 42 3-8 3 8 8 3-8 3-3 8-3-8-8-3zm109 29 2-5 2 5 5 2-5 2-2 5-2-5-5-2z" fill="#d3ba76"/>
+              <path d="M221 123q-1-19 13-26-2 17-13 26m0 0q-18-1-19-14 16 1 19 14" fill="#b7c8a1"/>
+            </svg>
+            <h2 id="start-title"><span>ぐんぐん</span> ヘビの庭</h2>
+            <p class="intro">まるいエサを ぱくっ！<br>きみのヘビを 大きくしよう。</p>
+            <button class="primary-button" id="start-button"><svg><use href="#i-play"/></svg>はじめる<svg class="button-arrow"><use href="#i-arrow"/></svg></button>
+            <div class="start-tips"><span><i class="food-dot"></i> エサで せいちょう</span><span><b class="relation edible">○</b> 小さいヘビも ぱくっ</span></div>
+          </section>
+          <section class="menu-card compact hidden" id="pause-menu" aria-labelledby="pause-title">
+            <div class="menu-symbol"><svg><use href="#i-pause"/></svg></div><div class="eyebrow">ちょっと ひとやすみ</div><h2 id="pause-title">ひとやすみ中</h2><p class="intro">おにわは 待っているよ。</p>
+            <button class="primary-button" id="resume-button"><svg><use href="#i-play"/></svg>つづける</button><button class="secondary-button" id="restart-button"><svg><use href="#i-restart"/></svg>はじめから</button>
+          </section>
+          <section class="menu-card compact hidden" id="end-menu" aria-labelledby="end-title">
+            <div class="menu-symbol star-symbol"><svg><use href="#i-star"/></svg></div><div class="eyebrow" id="end-eyebrow">よく そだったね！</div><h2 id="end-title">また あそぼう！</h2><div class="result-level">レベル <strong id="result-level">1</strong></div><p class="result-stats" id="result-stats"></p>
+            <button class="primary-button" id="again-button"><svg><use href="#i-restart"/></svg>もういっかい</button>
+          </section>
+        </div>
+      </div>
+
+      <div class="controls" id="controls" aria-label="指でなぞって方向を操作するエリア">
+        <div class="control-hint"><div class="hint-icon"><svg><use href="#i-leaf"/></svg></div><div><strong id="control-title">ここを なぞって うごかそう</strong><span>ゆびを はなしても すすむよ</span></div></div>
+        <div class="joystick-home" aria-hidden="true"><div class="direction top">↑</div><div class="direction right">→</div><div class="direction bottom">↓</div><div class="direction left">←</div><div class="joystick-dot"></div></div>
+        <div class="keyboard-hint"><div class="keycaps"><kbd>←</kbd><kbd>↑</kbd><kbd>↓</kbd><kbd>→</kbd></div><span>または W A S D</span></div>
+        <div class="touch-stick hidden" id="touch-stick" aria-hidden="true"><div id="touch-knob"></div></div>
+      </div>
+    </section>
+    <footer class="page-footer"><span><svg><use href="#i-leaf"/></svg> あせらず、きみの ペースで。</span><span>広告・課金なし<span class="footer-dot">·</span>じかんせいげん なし</span></footer>
+  </main>
+  <script type="module" src="./game/main.js"></script>
+</body>
+</html>
