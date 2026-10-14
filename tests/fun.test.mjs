@@ -46,10 +46,10 @@ test('rapid bites raise the melody, stay bounded, and restart after a gap', () =
   s.time += CONFIG.comboSeconds + .01; s.reward(1, 800, 800, false, apple);
   assert.equal(s.events.filter(e => e.type === 'eat').at(-1).combo, 1);
 });
-test('growth milestones have exact boundaries and no further locked style after level eight', () => {
+test('early growth milestones stay intact and point beyond level eight', () => {
   assert.equal(appearanceFor(2).id, 'plain'); assert.equal(appearanceFor(3).id, 'dots'); assert.equal(appearanceFor(4).id, 'dots');
   assert.equal(appearanceFor(5).id, 'flower'); assert.equal(appearanceFor(7).id, 'flower'); assert.equal(appearanceFor(8).id, 'rainbow');
-  assert.equal(appearanceFor(100).id, 'rainbow'); assert.equal(nextAppearance(4).level, 5); assert.equal(nextAppearance(8), null);
+  assert.equal(appearanceFor(100).id, 'legend'); assert.equal(nextAppearance(4).level, 5); assert.equal(nextAppearance(8).level, 10);
   assert.deepEqual(unlockedAppearances(2, 8).map(s => s.id), ['dots', 'flower', 'rainbow']);
 });
 test('one large XP reward crossing multiple milestones announces the final appearance once', () => {

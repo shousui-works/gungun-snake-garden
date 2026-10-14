@@ -1,4 +1,4 @@
-import { CONFIG, FRUITS, RAINBOW_COLORS } from './config.js';
+import { CONFIG, FRUITS } from './config.js';
 import { relation, clamp, appearanceFor, experienceNeeded } from './rules.js';
 import { viewModeFor, viewScaleFor } from './view.js';
 const FONT = '"Hiragino Maru Gothic ProN", "Yu Gothic", system-ui, sans-serif';
@@ -84,7 +84,10 @@ export class Renderer {
     for (const pt of sim.popups) {
       const point = this.screenPosition(pt);
       c.save(); c.setTransform(this.dpr, 0, 0, this.dpr, 0, 0); c.globalAlpha = Math.min(1, pt.life * 3); c.font = `800 ${pt.large ? 23 : pt.bite ? 16 : 19}px ${FONT}`; c.textAlign = 'center';
-      c.lineWidth = 5; c.strokeStyle = '#fdfcf5'; c.strokeText(pt.text, point.x, point.y); c.fillStyle = pt.treasure ? '#a47726' : pt.bite ? '#b56c57' : '#7956b7'; c.fillText(pt.text, point.x, point.y); c.restore();
+      const measured = c.measureText(pt.text).width;
+      if (measured > this.width - 20) c.font = `800 ${Math.max(14, (pt.large ? 23 : pt.bite ? 16 : 19) * (this.width - 20) / measured)}px ${FONT}`;
+      const textWidth = Math.min(c.measureText(pt.text).width, this.width - 20), x = clamp(point.x, 10 + textWidth / 2, this.width - 10 - textWidth / 2), y = clamp(point.y, 32, this.height - 20);
+      c.lineWidth = 5; c.strokeStyle = '#fdfcf5'; c.strokeText(pt.text, x, y); c.fillStyle = pt.treasure ? '#a47726' : pt.bite ? '#b56c57' : '#7956b7'; c.fillText(pt.text, x, y); c.restore();
     }
     this.drawGrowthLabel(p);
   }
@@ -163,9 +166,9 @@ export class Renderer {
     c.restore();
   }
   drawSnake(s, player) {
-    const c = this.ctx, r = s.radius, count = s.body.length, style = player ? appearanceFor(s.level).id : 'plain';
+    const c = this.ctx, r = s.radius, count = s.body.length, style = player ? appearanceFor(s.level) : null;
     const enemyCue = !player && !s.treasure ? ENEMY_CUES[relation(this.simulation.player.level, s.level)] : null;
-    const rainbow = style === 'rainbow', hat = style === 'flower' || rainbow;
+    const palette = style?.palette, baseColors = style?.colors || palette?.[0] || s.colors;
     const chew = player && s.chewTimer > 0 ? Math.sin((1 - s.chewTimer / CONFIG.chewSeconds) * Math.PI) : 0;
     if (s.treasure) {
       c.save(); c.fillStyle = '#ffe9a06b'; circle(c, s.x, s.y, r + 8 + Math.sin(this.clock * 4) * 2); c.fill();
@@ -195,25 +198,30 @@ export class Renderer {
     for (let i = count - 1; i >= 1; i--) {
       const pt = s.body[i]; if (!this.visible(pt.x, pt.y, 45)) continue;
       const size = r * (.58 + .42 * (1 - i / count));
-      const colors = rainbow ? RAINBOW_COLORS[i % RAINBOW_COLORS.length] : s.colors;
+      const colors = palette ? palette[i % palette.length] : baseColors;
       c.fillStyle = colors[1]; circle(c, pt.x, pt.y + 1.5, size); c.fill();
       c.fillStyle = colors[0]; circle(c, pt.x, pt.y - 1, size); c.fill();
       if (s.treasure) { c.fillStyle = '#fff4b3'; star(c, pt.x, pt.y - 1, size * .48); }
-      else if (player && style !== 'plain') {
-        c.fillStyle = '#fffaf0bb'; circle(c, pt.x - size * .28, pt.y - size * .33, size * .18); c.fill();
-        circle(c, pt.x + size * .31, pt.y + size * .2, size * .14); c.fill();
-      } else if (!player && s.level >= 4 && i % 2 === 0) { c.fillStyle = '#ffffff40'; circle(c, pt.x - size * .2, pt.y - size * .23, size * .45); c.fill(); }
+      else if (!player && s.level >= 4 && i % 2 === 0) { c.fillStyle = '#ffffff40'; circle(c, pt.x - size * .2, pt.y - size * .23, size * .45); c.fill(); }
       else { c.fillStyle = '#ffffff1a'; circle(c, pt.x - size * .22, pt.y - size * .25, size * .55); c.fill(); }
+    }
+    if (style?.pattern) {
+      const spacing = ['snow','flowers','gems','crystal','stars','galaxy','bolts','gold','royal'].includes(style.pattern) ? 3 : ['dots','stripes'].includes(style.pattern) ? 1 : 2;
+      // Paint motifs after the complete body, so adjacent segments cannot hide them.
+      for (let i = count - 1; i >= 1; i--) {
+        const pt = s.body[i]; if (i % spacing || !this.visible(pt.x, pt.y, 45)) continue;
+        this.drawBodyPattern(pt, r * (.58 + .42 * (1 - i / count)), style.pattern, s.body[i - 1]);
+      }
     }
     // Body cues must be drawn even when the head is outside the field.
     if (enemyCue) this.drawEnemyBodyMarkers(s, enemyCue);
     if (!this.visible(s.x, s.y)) return;
     c.save(); c.translate(s.x, s.y); c.rotate(s.angle); c.scale(1 + chew * .14, 1 + chew * .24);
-    c.fillStyle = s.colors[1]; c.beginPath(); c.ellipse(0, 2, r * 1.13, r, 0, 0, Math.PI * 2); c.fill();
-    if (rainbow) {
+    c.fillStyle = baseColors[1]; c.beginPath(); c.ellipse(0, 2, r * 1.13, r, 0, 0, Math.PI * 2); c.fill();
+    if (palette) {
       const gradient = c.createLinearGradient(-r, -r, r, r);
-      RAINBOW_COLORS.forEach((colors,i) => gradient.addColorStop(i / (RAINBOW_COLORS.length - 1), colors[0])); c.fillStyle = gradient;
-    } else c.fillStyle = s.colors[0];
+      palette.forEach((colors,i) => gradient.addColorStop(i / (palette.length - 1), colors[0])); c.fillStyle = gradient;
+    } else c.fillStyle = baseColors[0];
     c.beginPath(); c.ellipse(0, 0, r * 1.13, r, 0, 0, Math.PI * 2); c.fill();
     c.fillStyle = '#ffffff18'; c.beginPath(); c.ellipse(-r * .16, 0, r * .55, r * .76, 0, 0, Math.PI * 2); c.fill();
     for (const side of [-1, 1]) {
@@ -230,12 +238,98 @@ export class Renderer {
     if (chew > .2) {
       c.fillStyle = '#725277'; c.beginPath(); c.ellipse(r*.89,0,r*.14,r*(.13+chew*.07),0,0,Math.PI*2); c.fill();
       c.fillStyle = '#eea2b0'; c.beginPath(); c.ellipse(r*.92,r*.035,r*.065,r*.1,0,0,Math.PI*2); c.fill();
-    } else { c.strokeStyle = s.colors[1]; c.lineWidth = 1.2; c.lineCap = 'round'; c.beginPath(); c.moveTo(r * .87, -r * .16); c.quadraticCurveTo(r * 1.06, 0, r * .87, r * .16); c.stroke(); }
+    } else { c.strokeStyle = baseColors[1]; c.lineWidth = 1.2; c.lineCap = 'round'; c.beginPath(); c.moveTo(r * .87, -r * .16); c.quadraticCurveTo(r * 1.06, 0, r * .87, r * .16); c.stroke(); }
     c.restore();
-    if (hat) this.drawFlowerHat(s);
+    if (style?.accessory) this.drawAccessory(s, style.accessory);
     if (!player && !s.treasure && relation(this.simulation.player.level, s.level) === 'danger') {
       c.strokeStyle = '#b96a5c77'; c.lineWidth = 1.8; circle(c, s.x, s.y, r + 5); c.stroke();
     }
+  }
+  drawBodyPattern(point, r, pattern, toward) {
+    const c = this.ctx;
+    c.save(); c.translate(point.x, point.y - 1); c.rotate(Math.atan2(toward.y - point.y, toward.x - point.x));
+    circle(c, 0, 0, r * .94); c.clip(); c.lineWidth = 1.5; c.lineCap = 'round';
+    c.fillStyle = '#fffaf0bb'; c.strokeStyle = '#fffaf0bb';
+    if (pattern === 'dots') {
+      circle(c, -r*.28, -r*.33, r*.18); c.fill(); circle(c, r*.31, r*.2, r*.14); c.fill();
+    } else if (pattern === 'seeds') {
+      for (const [x,y] of [[-.3,-.35],[.3,.3]]) { c.beginPath(); c.ellipse(r*x,r*y,r*.1,r*.21,-.3,0,Math.PI*2); c.fill(); }
+    } else if (pattern === 'stripes') {
+      c.fillStyle = '#715643bb'; c.fillRect(-r*.26,-r,r*.42,r*2);
+    } else if (pattern === 'bubbles') {
+      circle(c,-r*.27,-r*.2,r*.32); c.stroke(); circle(c,r*.35,r*.25,r*.16); c.fill();
+    } else if (pattern === 'snow') {
+      for (let k=0;k<6;k++) { const a=k*Math.PI/3;c.beginPath();c.moveTo(0,0);c.lineTo(Math.cos(a)*r*.65,Math.sin(a)*r*.65);c.stroke(); }
+    } else if (pattern === 'flowers') {
+      for(let k=0;k<5;k++){const a=k*Math.PI*2/5;circle(c,Math.cos(a)*r*.33,Math.sin(a)*r*.33,r*.24);c.fill();} c.fillStyle='#f9dc88';circle(c,0,0,r*.23);c.fill();
+    } else if (pattern === 'lattice') {
+      c.lineWidth = 1.4; for(const offset of [-.6,0,.6]) {c.beginPath();c.moveTo(-r,r*offset-r);c.lineTo(r,r*offset+r);c.moveTo(-r,r*offset+r);c.lineTo(r,r*offset-r);c.stroke();}
+    } else if (pattern === 'tiger') {
+      c.fillStyle='#775439bb'; for(const side of [-1,1]){c.beginPath();c.moveTo(-r*.7,side*r);c.lineTo(r*.3,side*r);c.lineTo(-r*.15,side*r*.12);c.closePath();c.fill();}
+    } else if (pattern === 'gems' || pattern === 'crystal') {
+      c.beginPath();c.moveTo(0,-r*.73);c.lineTo(r*.5,0);c.lineTo(0,r*.73);c.lineTo(-r*.5,0);c.closePath();
+      c.fillStyle=pattern==='crystal'?'#f4f7ff9c':'#ccf1d996';c.fill();c.stroke();c.beginPath();c.moveTo(0,-r*.73);c.lineTo(0,r*.73);c.stroke();
+    } else if (pattern === 'stars' || pattern === 'galaxy') {
+      c.fillStyle='#ffeeb5';star(c,0,-r*.12,r*.58);
+      if(pattern==='galaxy'){c.strokeStyle='#cbbaf0aa';c.beginPath();c.ellipse(0,0,r*.8,r*.3,-.5,0,Math.PI*2);c.stroke();}
+    } else if (pattern === 'aurora') {
+      c.lineWidth=r*.2; c.beginPath();c.moveTo(-r,-r*.35);c.bezierCurveTo(-r*.3,r*.6,r*.3,-r*.6,r,r*.35);c.stroke();
+    } else if (pattern === 'armor' || pattern === 'scales') {
+      c.strokeStyle=pattern==='armor'?'#6a899b99':'#326e5899'; c.lineWidth=1.6;
+      for(const y of [-.35,.35]){c.beginPath();c.moveTo(-r*.62,r*y);c.quadraticCurveTo(0,r*(y+.6),r*.62,r*y);c.stroke();}
+      if(pattern==='armor'){c.fillStyle='#f4fcff';circle(c,0,-r*.55,r*.1);c.fill();}
+    } else if (pattern === 'bolts') {
+      c.fillStyle='#fff1b8';c.beginPath();c.moveTo(r*.12,-r*.72);c.lineTo(-r*.45,r*.12);c.lineTo(-r*.02,r*.12);c.lineTo(-r*.12,r*.72);c.lineTo(r*.48,-r*.18);c.lineTo(r*.06,-r*.18);c.closePath();c.fill();
+    } else if (pattern === 'candy') {
+      c.lineWidth=r*.4;c.beginPath();c.moveTo(-r,-r*.3);c.lineTo(r,r*.65);c.moveTo(-r,-r*1.3);c.lineTo(r,-r*.35);c.stroke();
+    } else if (pattern === 'gold') {
+      c.strokeStyle='#fff0a8';circle(c,0,0,r*.65);c.stroke();c.fillStyle='#fff6c7';star(c,-r*.25,-r*.25,r*.26);
+    } else if (pattern === 'feathers') {
+      c.fillStyle='#ffefb7';c.beginPath();c.ellipse(0,0,r*.62,r*.26,-.5,0,Math.PI*2);c.fill();c.strokeStyle='#dc9554';c.beginPath();c.moveTo(-r*.45,r*.2);c.lineTo(r*.45,-r*.2);c.stroke();
+    } else if (pattern === 'royal') {
+      c.strokeStyle='#f9df89';c.lineWidth=2.2;circle(c,0,0,r*.83);c.stroke();c.fillStyle='#fff7c5';star(c,0,0,r*.54);
+    }
+    c.restore();
+  }
+  drawAccessory(s, accessory) {
+    if (accessory === 'flower' || accessory === 'blossom') { this.drawFlowerHat(s, accessory === 'blossom'); return; }
+    const c = this.ctx, r = s.radius;
+    c.save(); c.translate(s.x - r*.12, s.y - r*.77); c.lineWidth=1.2; c.lineJoin='round'; c.lineCap='round';
+    const crown = royal => {
+      c.fillStyle=royal?'#f7d56f':'#edc568';c.strokeStyle='#b68b38';c.beginPath();c.moveTo(-r*.7,0);c.lineTo(-r*.82,-r*.73);c.lineTo(-r*.34,-r*.4);c.lineTo(0,-r);c.lineTo(r*.34,-r*.4);c.lineTo(r*.82,-r*.73);c.lineTo(r*.7,0);c.closePath();c.fill();c.stroke();
+      c.fillStyle=royal?'#a283d3':'#ee939d';circle(c,0,-r*.27,r*.14);c.fill();
+      if(royal){c.fillStyle='#fff6c4';star(c,0,-r*1.1,r*.23);}
+    };
+    if(accessory==='leaf'){
+      c.fillStyle='#83aa61';for(const side of [-1,1]){c.beginPath();c.ellipse(side*r*.25,-r*.22,r*.5,r*.2,side*.7,0,Math.PI*2);c.fill();}c.strokeStyle='#628444';c.beginPath();c.moveTo(0,0);c.lineTo(r*.12,-r*.55);c.stroke();
+    }else if(accessory==='antennae'){
+      c.strokeStyle='#786046';for(const side of [-1,1]){c.beginPath();c.moveTo(side*r*.35,0);c.quadraticCurveTo(side*r*.7,-r*.65,side*r*.55,-r*.8);c.stroke();c.fillStyle='#786046';circle(c,side*r*.55,-r*.8,r*.14);c.fill();}
+    }else if(accessory==='fin'){
+      c.fillStyle='#4d9ebd';c.strokeStyle='#367f9f';c.beginPath();c.moveTo(-r*.65,r*.1);c.lineTo(-r*.2,-r*.72);c.quadraticCurveTo(r*.1,-r*.18,r*.65,r*.1);c.closePath();c.fill();c.stroke();
+    }else if(['ice','gem','crystal'].includes(accessory)){
+      const colors=accessory==='gem'?['#a9e3c5','#498e75']:['#e5f9ff','#8fb8d4'];
+      for(const [x,height] of [[-.45,.55],[0,.94],[.45,.65]]){c.fillStyle=colors[0];c.strokeStyle=colors[1];c.beginPath();c.moveTo(r*(x-.2),r*.07);c.lineTo(r*(x-.2),-r*height*.65);c.lineTo(r*x,-r*height);c.lineTo(r*(x+.2),-r*height*.65);c.lineTo(r*(x+.2),r*.07);c.closePath();c.fill();c.stroke();}
+    }else if(accessory==='ears'){
+      for(const side of [-1,1]){c.fillStyle='#b77b37';circle(c,side*r*.62,-r*.28,r*.38);c.fill();c.fillStyle='#f5d29c';circle(c,side*r*.62,-r*.3,r*.22);c.fill();}
+    }else if(accessory==='star'){
+      c.strokeStyle='#9075b8';c.beginPath();c.moveTo(0,0);c.quadraticCurveTo(-r*.18,-r*.52,0,-r*.8);c.stroke();c.fillStyle='#f6dd8b';star(c,0,-r*.82,r*.38);
+    }else if(accessory==='helmet'){
+      c.fillStyle='#d5e4eb';c.strokeStyle='#809cac';c.beginPath();c.arc(0,0,r*.77,Math.PI,Math.PI*2);c.closePath();c.fill();c.stroke();c.fillStyle='#91a7d4';pill(c,-r*.14,-r*1.02,r*.28,r*.42,r*.12);c.fill();
+    }else if(accessory==='rocket'){
+      c.fillStyle='#fff3de';c.strokeStyle='#c27b5a';c.beginPath();c.moveTo(-r*.5,0);c.quadraticCurveTo(-r*.48,-r*.55,0,-r*.96);c.quadraticCurveTo(r*.48,-r*.55,r*.5,0);c.closePath();c.fill();c.stroke();c.fillStyle='#a2cee1';circle(c,0,-r*.35,r*.2);c.fill();c.fillStyle='#d78b6e';c.fillRect(-r*.63,-r*.05,r*1.26,r*.14);
+    }else if(accessory==='wizard'){
+      c.fillStyle='#665795';c.strokeStyle='#4d4279';c.beginPath();c.moveTo(-r*.75,0);c.lineTo(-r*.18,-r*1.13);c.quadraticCurveTo(r*.2,-r*.77,r*.7,0);c.closePath();c.fill();c.stroke();c.fillStyle='#eadb8a';star(c,0,-r*.37,r*.23);c.fillStyle='#9d8ac9';c.beginPath();c.ellipse(0,0,r*.9,r*.17,0,0,Math.PI*2);c.fill();
+    }else if(accessory==='bow'){
+      c.fillStyle='#f4cfdb';c.strokeStyle='#bd7bab';for(const side of [-1,1]){c.beginPath();c.moveTo(0,-r*.2);c.quadraticCurveTo(side*r*.85,-r*.95,side*r*.73,-r*.12);c.quadraticCurveTo(side*r*.62,r*.2,0,-r*.2);c.fill();c.stroke();}c.fillStyle='#bb7eb2';circle(c,0,-r*.2,r*.2);c.fill();
+    }else if(accessory==='crown'||accessory==='royal'){
+      if(accessory==='royal')for(const side of [-1,1]){c.fillStyle='#fff3c7';c.strokeStyle='#d1af68';c.beginPath();c.moveTo(side*r*.35,0);c.quadraticCurveTo(side*r*1.7,-r*.67,side*r*1.3,-r*1.2);c.quadraticCurveTo(side*r*.72,-r*.95,side*r*.35,0);c.fill();c.stroke();}
+      crown(accessory==='royal');
+    }else if(accessory==='horns'){
+      c.fillStyle='#f2dc9a';c.strokeStyle='#b59d65';for(const side of [-1,1]){c.beginPath();c.moveTo(side*r*.22,0);c.quadraticCurveTo(side*r*.75,-r*.5,side*r*.58,-r*1.03);c.quadraticCurveTo(side*r*.12,-r*.53,side*r*.05,0);c.fill();c.stroke();}
+    }else if(accessory==='flame'){
+      c.fillStyle='#f1bf69';c.strokeStyle='#d99852';c.beginPath();c.moveTo(-r*.65,0);c.quadraticCurveTo(-r*.85,-r*.55,-r*.27,-r*.75);c.lineTo(-r*.16,-r*1.23);c.quadraticCurveTo(r*.35,-r*.8,r*.21,-r*.36);c.lineTo(r*.64,-r*.64);c.quadraticCurveTo(r*.87,-r*.08,r*.53,0);c.closePath();c.fill();c.stroke();c.fillStyle='#fff0a5';c.beginPath();c.ellipse(0,-r*.25,r*.25,r*.44,.15,0,Math.PI*2);c.fill();
+    }
+    c.restore();
   }
   drawEnemyBodyMarkers(s, cue = ENEMY_CUES[relation(this.simulation.player.level, s.level)]) {
     const c = this.ctx, indices = [];
@@ -264,14 +358,14 @@ export class Renderer {
     }
     c.restore();
   }
-  drawFlowerHat(s) {
+  drawFlowerHat(s, blossom = false) {
     const c = this.ctx, r = s.radius; c.save(); c.translate(s.x - r*.12, s.y - r*.74); c.rotate(-.15);
     c.fillStyle = '#e4b867'; c.strokeStyle = '#b58b4b'; c.lineWidth = 1;
     c.beginPath(); c.ellipse(0,0,r*.95,r*.25,0,0,Math.PI*2); c.fill(); c.stroke();
     c.fillStyle = '#f3d48e'; pill(c,-r*.58,-r*.52,r*1.16,r*.57,r*.21); c.fill(); c.stroke();
     c.fillStyle = '#b494d7'; pill(c,-r*.59,-r*.15,r*1.18,r*.15,2); c.fill();
     const x = r*.5, y = -r*.22;
-    c.fillStyle = '#f5abb8';
+    c.fillStyle = blossom ? '#fff0f5' : '#f5abb8';
     for (let i=0;i<6;i++) { const a=i*Math.PI/3; circle(c,x+Math.cos(a)*r*.17,y+Math.sin(a)*r*.17,r*.13); c.fill(); }
     c.fillStyle = '#fff1a9'; circle(c,x,y,r*.12); c.fill(); c.restore();
   }
