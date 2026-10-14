@@ -5,6 +5,7 @@ import { GameAudio } from './audio.js';
 import { DIFFICULTIES } from './config.js';
 import { experienceNeeded, appearanceFor, nextAppearance } from './rules.js';
 import { RankingClient, normalizePlayerName } from './ranking.js';
+import { VIEW_MODES, viewModeFor } from './view.js';
 
 const $ = id => document.getElementById(id);
 const storage = {
@@ -21,7 +22,8 @@ const savedDifficulty = storage.get('snake-garden-difficulty', 'normal');
 let selectedDifficulty = Object.hasOwn(DIFFICULTIES, savedDifficulty) ? savedDifficulty : 'normal';
 const sim = new Simulation(Math.random, selectedDifficulty);
 try { sim.restoreGarden(JSON.parse(storage.get('snake-garden-garden', '[]'))); } catch { /* A damaged save never prevents play. */ }
-const renderer = new Renderer($('game-canvas'), sim);
+let selectedView = viewModeFor(storage.get('snake-garden-view', 'wide'));
+const renderer = new Renderer($('game-canvas'), sim, selectedView);
 const input = new InputController($('game-canvas'), sim, () => {
   if (currentMenu === 'ranking-menu') { closeRanking(); return; }
   if (sim.state === 'playing') pause(); else if (sim.state === 'paused') resume();
@@ -67,6 +69,10 @@ function soundUi() {
   $('sound-button').setAttribute('aria-pressed', String(audio.enabled));
   $('sound-button').setAttribute('aria-label', audio.enabled ? '音をオフにする' : '音をオンにする');
   $('sound-button').querySelector('use').setAttribute('href', audio.enabled ? '#i-sound' : '#i-mute');
+}
+function viewUi() {
+  for (const choice of document.querySelectorAll('input[name="view-mode"]')) choice.checked = choice.value === selectedView;
+  $('view-hint').textContent = VIEW_MODES[selectedView].description;
 }
 function start() {
   activeRun = ranking.begin(selectedDifficulty); completedRun = null;
@@ -176,6 +182,10 @@ for (const choice of document.querySelectorAll('input[name="difficulty"]')) choi
   if (!choice.checked || !Object.hasOwn(DIFFICULTIES, choice.value)) return;
   selectedDifficulty = choice.value; storage.set('snake-garden-difficulty', selectedDifficulty); difficultyUi();
 });
+for (const choice of document.querySelectorAll('input[name="view-mode"]')) choice.addEventListener('change', () => {
+  if (!choice.checked || !Object.hasOwn(VIEW_MODES, choice.value)) return;
+  input.clear(); selectedView = choice.value; storage.set('snake-garden-view', selectedView); renderer.setViewMode(selectedView); viewUi();
+});
 $('sound-button').addEventListener('click', () => { audio.enabled = !audio.enabled; if (audio.enabled) audio.init(); storage.set('snake-garden-sound', audio.enabled ? 'on' : 'off'); soundUi(); });
 document.addEventListener('visibilitychange', () => { input.clear(); previous = 0; if (document.hidden) pause(); });
 window.addEventListener('blur', pause);
@@ -193,6 +203,6 @@ function frame(now) {
   if (now - lastGardenSave > 2000) { saveGarden(); lastGardenSave = now; }
   renderer.draw(dt); frameId = requestAnimationFrame(frame);
 }
-soundUi(); difficultyUi(); updateStatus(); showMenu('start-menu'); frameId = requestAnimationFrame(frame);
+soundUi(); difficultyUi(); viewUi(); updateStatus(); showMenu('start-menu'); frameId = requestAnimationFrame(frame);
 window.addEventListener('pagehide', saveGarden);
 window.addEventListener('unload', () => { saveGarden(); cancelAnimationFrame(frameId); renderer.destroy(); input.destroy(); audio.destroy(); });

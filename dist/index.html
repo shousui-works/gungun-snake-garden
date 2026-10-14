@@ -64,12 +64,19 @@
             <div class="start-tips transformation-tips"><span><svg><use href="#i-dots"/></svg> Lv.3 みずたま</span><span><svg><use href="#i-flower"/></svg> Lv.5 お花</span><span><svg><use href="#i-rainbow"/></svg> Lv.8 にじいろ</span></div>
           </section>
           <section class="menu-card compact hidden" id="pause-menu" aria-labelledby="pause-title">
+            <div class="pause-details">
             <div class="menu-symbol"><svg><use href="#i-pause"/></svg></div><div class="eyebrow"><span id="pause-difficulty">ふつう</span>で あそんでいるよ</div><h2 id="pause-title">ひとやすみ中</h2><p class="intro">おにわは 待っているよ。</p>
             <div class="pause-growth"><div class="growth-label"><span>レベル <strong id="level">1</strong></span><span>つぎまで <strong id="xp-text">0 / 5</strong></span></div><div class="progress" role="progressbar" aria-label="つぎのレベルまでの経験値" aria-valuemin="0" aria-valuemax="5" aria-valuenow="0"><div id="xp-fill"></div></div></div>
             <p class="garden-stats" id="garden-text">お花 0本 ・ おたから 0ひき</p>
+            <fieldset class="difficulty-picker view-picker"><legend>見える範囲</legend><div class="difficulty-options view-options">
+              <label><input class="sr-only" type="radio" name="view-mode" value="wide" aria-label="広く見る" checked><span>広く見る</span></label>
+              <label><input class="sr-only" type="radio" name="view-mode" value="large" aria-label="大きく見る"><span>大きく見る</span></label>
+            </div><p class="difficulty-hint" id="view-hint" aria-live="polite">まわりを 広く見わたせるよ</p></fieldset>
+            </div><div class="pause-actions">
             <button class="primary-button" id="resume-button"><svg><use href="#i-play"/></svg>つづける</button><button class="secondary-button" id="restart-button"><svg><use href="#i-restart"/></svg>はじめから</button>
             <button class="choose-button" id="pause-choose-button">むずかしさを変える<small>レベル1から あそぶ</small></button>
             <button class="ranking-link" id="pause-ranking-button"><svg aria-hidden="true"><use href="#i-trophy"/></svg>みんなのランキング</button>
+            </div>
           </section>
           <section class="menu-card compact hidden" id="end-menu" aria-labelledby="end-title">
             <div class="menu-symbol star-symbol"><svg><use href="#i-star"/></svg></div><div class="eyebrow" id="end-eyebrow">よく そだったね！</div><h2 id="end-title">また あそぼう！</h2><div class="result-level">レベル <strong id="result-level">1</strong></div><p class="result-stats" id="result-stats"></p><p class="garden-stats" id="garden-stats"></p>

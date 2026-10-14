@@ -1,5 +1,6 @@
 import { CONFIG, FRUITS, RAINBOW_COLORS } from './config.js';
 import { relation, clamp, appearanceFor, experienceNeeded } from './rules.js';
+import { viewModeFor, viewScaleFor } from './view.js';
 const FONT = '"Hiragino Maru Gothic ProN", "Yu Gothic", system-ui, sans-serif';
 const ENEMY_CUES = Object.freeze({
   danger: { symbol: '!', edge: '#c77462', background: '#fff0e5', ink: '#ad4c38' },
@@ -14,8 +15,9 @@ function star(c, x, y, radius) {
   c.closePath(); c.fill();
 }
 export class Renderer {
-  constructor(canvas, simulation) {
+  constructor(canvas, simulation, viewMode = 'wide') {
     this.canvas = canvas; this.simulation = simulation; this.ctx = canvas.getContext('2d', { alpha: false }); this.camera = { x: 800, y: 800 }; this.clock = 0;
+    this.viewMode = viewModeFor(viewMode);
     this.decorations = Array.from({ length: 135 }, (_, i) => ({ x: ((i * 227 + 61) % 1500) + 50, y: ((i * 379 + 137) % 1500) + 50, type: i % 5, rotation: i * 1.62 }));
     this.observer = new ResizeObserver(() => this.resize()); this.observer.observe(canvas); this.resize();
   }
@@ -23,9 +25,10 @@ export class Renderer {
     const rect = this.canvas.getBoundingClientRect(); this.width = rect.width; this.height = rect.height;
     this.dpr = Math.min(window.devicePixelRatio || 1, 2);
     this.canvas.width = Math.round(this.width * this.dpr); this.canvas.height = Math.round(this.height * this.dpr);
-    this.scale = this.width < 650 ? 1.08 : Math.max(1.12, Math.min(this.width / 1200, this.height / 850));
+    this.scale = viewScaleFor(this.width, this.height, this.viewMode);
     this.simulation.viewport = { width: this.width / this.scale, height: this.height / this.scale };
   }
+  setViewMode(mode) { this.viewMode = viewModeFor(mode); this.resize(); }
   resetCamera() { this.camera = { x: this.simulation.player.x, y: this.simulation.player.y }; this.directionCue = null; }
   screenPosition(point) {
     return { x: this.width / 2 + (point.x - this.camera.x) * this.scale, y: this.height / 2 + (point.y - this.camera.y) * this.scale, radius: (point.radius || 0) * this.scale };
@@ -79,8 +82,9 @@ export class Renderer {
     }
     c.globalAlpha = 1;
     for (const pt of sim.popups) {
-      c.save(); c.globalAlpha = Math.min(1, pt.life * 3); c.font = `800 ${pt.large ? 23 : pt.bite ? 16 : 19}px ${FONT}`; c.textAlign = 'center';
-      c.lineWidth = 5; c.strokeStyle = '#fdfcf5'; c.strokeText(pt.text, pt.x, pt.y); c.fillStyle = pt.treasure ? '#a47726' : pt.bite ? '#b56c57' : '#7956b7'; c.fillText(pt.text, pt.x, pt.y); c.restore();
+      const point = this.screenPosition(pt);
+      c.save(); c.setTransform(this.dpr, 0, 0, this.dpr, 0, 0); c.globalAlpha = Math.min(1, pt.life * 3); c.font = `800 ${pt.large ? 23 : pt.bite ? 16 : 19}px ${FONT}`; c.textAlign = 'center';
+      c.lineWidth = 5; c.strokeStyle = '#fdfcf5'; c.strokeText(pt.text, point.x, point.y); c.fillStyle = pt.treasure ? '#a47726' : pt.bite ? '#b56c57' : '#7956b7'; c.fillText(pt.text, point.x, point.y); c.restore();
     }
     this.drawGrowthLabel(p);
   }
@@ -252,7 +256,7 @@ export class Renderer {
     c.save(); c.textAlign = 'center'; c.textBaseline = 'middle'; c.lineWidth = 1.2;
     for (const i of indices) {
       const point = this.screenPosition(s.body[i]), bodyRadius = s.radius * (.58 + .42 * (1 - i / s.body.length));
-      const badgeRadius = clamp(bodyRadius * .65, 7.2, 9), margin = (badgeRadius + 2) * this.scale;
+      const badgeRadius = clamp(bodyRadius * .65 * this.scale, 7.2, 9) / this.scale, margin = badgeRadius * this.scale + 2;
       const x = this.camera.x + (clamp(point.x, margin, this.width - margin) - this.width / 2) / this.scale;
       const y = this.camera.y + (clamp(point.y, margin, this.height - margin) - this.height / 2) / this.scale;
       c.fillStyle = cue.background; c.strokeStyle = cue.edge; circle(c, x, y, badgeRadius); c.fill(); c.stroke();
@@ -272,35 +276,36 @@ export class Renderer {
     c.fillStyle = '#fff1a9'; circle(c,x,y,r*.12); c.fill(); c.restore();
   }
   drawLabel(s) {
+    const c = this.ctx, point = this.screenPosition(s);
+    c.save(); c.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     if (s.treasure) {
-      const c = this.ctx, x = s.x - 38, y = s.y - s.radius - 33;
+      const x = point.x - 38, y = point.y - point.radius - 33;
       c.fillStyle = '#fff5d8'; c.strokeStyle = '#d4b469'; c.lineWidth = 1; pill(c, x, y, 76, 24, 11); c.fill(); c.stroke();
-      c.fillStyle = '#ba9038'; star(c, x + 13, y + 12, 6); c.font = `700 10px ${FONT}`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('おたから', x + 45, y + 12); c.textBaseline = 'alphabetic'; return;
+      c.fillStyle = '#ba9038'; star(c, x + 13, y + 12, 6); c.font = `700 11px ${FONT}`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('おたから', x + 45, y + 12); c.restore(); return;
     }
-    const c = this.ctx, mode = relation(this.simulation.player.level, s.level), text = `Lv.${s.level}`;
-    c.font = `700 10px ${FONT}`; const w = c.measureText(text).width + 37, x = s.x - w / 2, y = s.y - s.radius - 35;
+    const mode = relation(this.simulation.player.level, s.level), text = `Lv.${s.level}`;
+    c.font = `700 11px ${FONT}`; const w = c.measureText(text).width + 37, x = point.x - w / 2, y = point.y - point.radius - 35;
     c.fillStyle = '#596b4530'; pill(c, x, y + 2, w, 24, 11); c.fill();
     c.fillStyle = mode === 'danger' ? '#fff0e5' : '#f8faee'; pill(c, x, y, w, 24, 11); c.fill();
     c.strokeStyle = mode === 'danger' ? '#ce8d74' : '#adbd97'; c.lineWidth = 1; c.stroke();
     c.textAlign = 'center'; c.textBaseline = 'middle';
     c.fillStyle = mode === 'danger' ? '#b56b55' : mode === 'edible' ? '#6e9147' : '#99a88b';
     c.font = `900 13px ${FONT}`; c.fillText(mode === 'danger' ? '!' : mode === 'edible' ? '○' : '＝', x + 12, y + 12);
-    c.font = `700 10px ${FONT}`; c.fillStyle = '#657851';
-    c.fillText(text, x + w / 2 + 9, y + 12); c.textBaseline = 'alphabetic';
+    c.font = `700 11px ${FONT}`; c.fillStyle = '#657851';
+    c.fillText(text, x + w / 2 + 9, y + 12); c.restore();
   }
   drawGrowthLabel(s) {
-    const c = this.ctx, needed = experienceNeeded(s.level), fraction = `${s.xp} / ${needed}`, title = `あなた  Lv.${s.level}`;
-    c.save(); c.font = `700 9px ${FONT}`;
+    const c = this.ctx, point = this.screenPosition(s), needed = experienceNeeded(s.level), fraction = `${s.xp} / ${needed}`, title = `あなた  Lv.${s.level}`;
+    c.save(); c.setTransform(this.dpr, 0, 0, this.dpr, 0, 0); c.font = `700 10px ${FONT}`;
     const countWidth = c.measureText(fraction).width;
-    c.font = `700 10px ${FONT}`;
-    const w = Math.max(112, c.measureText(title).width + 20, countWidth + 74), h = 36;
-    const left = this.camera.x - this.width / this.scale / 2, top = this.camera.y - this.height / this.scale / 2;
-    const x = clamp(s.x - w / 2, left + 6 / this.scale, left + this.width / this.scale - w - 6 / this.scale);
+    c.font = `700 11px ${FONT}`;
+    const w = Math.max(124, c.measureText(title).width + 20, countWidth + 74), h = 40;
+    const x = clamp(point.x - w / 2, 6, this.width - w - 6);
     // Keep the small status card inside the field and clear of the corner buttons.
-    const touchesControls = (x - left + w) * this.scale > this.width - 126;
-    const minY = top + (touchesControls ? 72 : 6) / this.scale, maxY = top + (this.height - 6) / this.scale - h;
-    let y = s.y - s.radius - h - 26;
-    if (y < minY) y = s.y + s.radius + 12;
+    const touchesControls = x + w > this.width - 126;
+    const minY = touchesControls ? 72 : 6, maxY = this.height - 6 - h;
+    let y = point.y - point.radius - h - 26;
+    if (y < minY) y = point.y + point.radius + 12;
     y = clamp(y, minY, maxY);
     c.fillStyle = '#596b4530'; pill(c, x, y + 2, w, h, 11); c.fill();
     c.fillStyle = '#f5effbf2'; c.strokeStyle = '#b398d5'; c.lineWidth = 1; pill(c, x, y, w, h, 11); c.fill(); c.stroke();
@@ -308,7 +313,7 @@ export class Renderer {
     const barX = x + 9, barY = y + 23, barWidth = w - countWidth - 26, progress = clamp(s.xp / needed, 0, 1);
     c.fillStyle = '#dfd4ed'; pill(c, barX, barY, barWidth, 6, 3); c.fill();
     if (progress > 0) { c.fillStyle = progress >= .8 ? '#c5a34d' : '#9476cf'; pill(c, barX, barY, barWidth * progress, 6, 3); c.fill(); }
-    c.font = `700 9px ${FONT}`; c.fillStyle = '#7957b0'; c.textAlign = 'right'; c.fillText(fraction, x + w - 8, y + 26);
+    c.font = `700 10px ${FONT}`; c.fillStyle = '#7957b0'; c.textAlign = 'right'; c.fillText(fraction, x + w - 8, y + 26);
     c.restore();
   }
   destroy() { this.observer.disconnect(); }

@@ -66,3 +66,10 @@
 @media(max-height:510px){.ranking-card{padding:13px 18px}.ranking-card h2{font-size:19px;margin:5px 0 10px}.ranking-card .eyebrow{display:none}.ranking-picker legend{display:none}.ranking-rule{margin-bottom:7px}.ranking-personal{padding:6px;margin-bottom:5px}.ranking-actions{margin-top:10px}.ranking-footnote{margin-top:6px}.ranking-message{margin:5px 0}.record-form{margin-top:8px}.ranking-link{margin-top:3px}}
 .ranking-delete{min-height:48px;border:0;background:transparent;color:#969a8d;font-size:10px;margin-top:3px;flex-shrink:0}
 .ranking-delete-confirm{flex-shrink:0;font-size:11px;color:#8c7d65;margin-top:8px}.ranking-delete-confirm p{margin:0 0 4px}.ranking-delete-confirm button{min-height:48px;min-width:90px;border:1px solid #ded9c9;border-radius:10px;background:#f4f0e7;color:#7d6b46;margin:0 4px}
+
+.view-options{grid-template-columns:repeat(2,minmax(0,1fr))}
+.view-picker{margin:0 0 16px}.view-picker legend{font-size:12px}
+.view-options span{font-size:12px}.view-picker .difficulty-hint{font-size:10px}
+@media(max-height:710px){#pause-menu .menu-symbol{display:none}#pause-menu h2{margin-top:6px}#pause-menu .intro{margin:6px 0 12px}#pause-menu .pause-growth{margin-bottom:12px}#pause-menu .garden-stats{margin-bottom:12px}.view-picker{margin-bottom:12px}}
+@media(max-height:510px){.view-picker{margin-bottom:10px}.view-picker legend{margin-bottom:5px}#pause-menu .pause-growth{margin-bottom:8px}#pause-menu .garden-stats{margin-bottom:8px}}
+@media(min-width:520px) and (max-height:510px){#pause-menu{width:640px;display:grid;grid-template-columns:1fr 1fr;gap:20px;padding:16px 22px;align-items:center}#pause-menu .view-picker{margin-bottom:0}#pause-menu .pause-growth{margin-top:12px}.pause-actions .ranking-link{margin-top:0}}
