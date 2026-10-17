@@ -26,6 +26,7 @@ let selectedView = viewModeFor(storage.get('snake-garden-view', 'wide'));
 const renderer = new Renderer($('game-canvas'), sim, selectedView);
 const input = new InputController($('game-canvas'), sim, () => {
   if (currentMenu === 'ranking-menu') { closeRanking(); return; }
+  if (sim.state === 'over') { if (currentMenu === 'end-menu') viewFinalState(); else restoreResults(); return; }
   if (sim.state === 'playing') pause(); else if (sim.state === 'paused') resume();
 }, () => renderer.screenPosition(sim.player), angle => renderer.showDirection(angle));
 let lastStatus = 0, previous = 0, frameId = 0, bestAtStart = best, savedGardenRevision = sim.gardenRevision, lastGardenSave = 0;
@@ -39,7 +40,8 @@ function showMenu(id) {
   $('overlay').classList.toggle('hidden', !id);
   for (const menu of ['start-menu', 'pause-menu', 'end-menu', 'ranking-menu']) $(menu).classList.toggle('hidden', id !== menu);
   $('pause-button').disabled = sim.state !== 'playing';
-  $('pause-button').classList.toggle('hidden', Boolean(id));
+  $('pause-button').classList.toggle('hidden', Boolean(id) || sim.state !== 'playing');
+  $('result-return-button').classList.toggle('hidden', Boolean(id) || sim.state !== 'over' || !completedRun);
   $('legend').classList.toggle('hidden', Boolean(id));
   $('appearance-badge').classList.toggle('hidden', Boolean(id));
 }
@@ -103,6 +105,17 @@ function finish() {
   const nickname = storage.get('snake-garden-nickname', '');
   $('nickname').value = normalizePlayerName(nickname) || `${['りんご', 'バナナ', 'ぶどう'][Math.floor(Math.random() * 3)]}ヘビ${Math.floor(Math.random() * 90) + 10}`;
   showMenu('end-menu'); $('again-button').focus({ preventScroll: true });
+}
+function viewFinalState() {
+  if (sim.state !== 'over' || currentMenu !== 'end-menu' || !completedRun) return;
+  input.clear(); showMenu(null);
+  announce('最後のおにわだよ。「結果にもどる」で記録を登録できるよ。');
+  $('result-return-button').focus({ preventScroll: true });
+}
+function restoreResults() {
+  if (sim.state !== 'over' || currentMenu !== null || !completedRun) return;
+  input.clear(); showMenu('end-menu'); $('view-final-button').focus({ preventScroll: true });
+  announce('結果の画面にもどったよ。');
 }
 function appendRecordTime(container, recordedAt) {
   const formatted = formatRecordDate(recordedAt);
@@ -190,6 +203,8 @@ $('pause-button').addEventListener('click', pause);
 $('resume-button').addEventListener('click', resume);
 $('pause-choose-button').addEventListener('click', chooseAgain);
 $('end-choose-button').addEventListener('click', chooseAgain);
+$('view-final-button').addEventListener('click', viewFinalState);
+$('result-return-button').addEventListener('click', restoreResults);
 for (const choice of document.querySelectorAll('input[name="difficulty"]')) choice.addEventListener('change', () => {
   if (!choice.checked || !Object.hasOwn(DIFFICULTIES, choice.value)) return;
   selectedDifficulty = choice.value; storage.set('snake-garden-difficulty', selectedDifficulty); difficultyUi();

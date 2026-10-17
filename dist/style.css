@@ -13,6 +13,11 @@
 .game-actions .icon-button{width:48px;height:48px;border-radius:50%;background:#f9fbf0b8;border-color:#b7cba950;color:#66765e;box-shadow:0 2px 8px #4b64420a}
 .game-actions .icon-button:hover{background:#f9fbf0eb}
 .game-actions .icon-button svg{width:21px;height:21px}
+.result-return{min-height:48px;max-width:calc(100vw - 90px);padding:0 15px;border:1px solid #b398d5;border-radius:15px;background:#f9f4fff2;color:#7658b2;font-size:13px;font-weight:800;box-shadow:0 2px 8px #4b644214}
+.result-return:hover{background:#eee5f8}
+#end-menu{position:relative}
+#end-menu .result-dismiss{position:absolute;top:10px;right:10px;background:#f2edf6;border-color:#e4dbea;color:#8c749f;border-radius:50%}
+#end-menu .result-dismiss svg{width:19px;height:19px}
 .best-record{font-size:10px;color:#8a8667;margin:7px 0 0}
 .best-record strong{font-family:system-ui,sans-serif;color:#706b4c}
 .pause-growth{margin:0 0 20px;text-align:left}

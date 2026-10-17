@@ -38,7 +38,7 @@
     <section class="game-shell" aria-label="ヘビの庭 ゲーム">
       <div class="field" id="field">
         <canvas id="game-canvas" aria-label="ヘビの周りをタップすると、その方向に進みます。PCではクリック・矢印キー・WASDも使えます。">このゲームにはCanvas対応ブラウザが必要です。</canvas>
-        <div class="game-actions"><button class="icon-button" id="sound-button" aria-label="音をオフにする" aria-pressed="true"><svg aria-hidden="true"><use href="#i-sound"/></svg></button><button class="icon-button hidden" id="pause-button" aria-label="一時停止" disabled><svg aria-hidden="true"><use href="#i-pause"/></svg></button></div>
+        <div class="game-actions"><button class="icon-button" id="sound-button" aria-label="音をオフにする" aria-pressed="true"><svg aria-hidden="true"><use href="#i-sound"/></svg></button><button class="icon-button hidden" id="pause-button" aria-label="一時停止" disabled><svg aria-hidden="true"><use href="#i-pause"/></svg></button><button class="result-return hidden" id="result-return-button" type="button">結果にもどる</button></div>
         <div class="legend" id="legend"><span><b class="relation edible">○</b>たべられる</span><span><b class="relation danger">!</b>つよいヘビ</span></div>
         <div class="appearance-badge hidden" id="appearance-badge"><svg aria-hidden="true"><use id="appearance-icon" href="#i-leaf"/></svg><div><strong id="appearance-name">むらさき</strong><small id="next-appearance">つぎの へんしん Lv.3</small></div></div>
         <div class="sr-only" id="announcement" aria-live="polite" aria-atomic="true"></div>
@@ -89,6 +89,7 @@
             </div>
           </section>
           <section class="menu-card compact hidden" id="end-menu" aria-labelledby="end-title">
+            <button class="icon-button result-dismiss" id="view-final-button" type="button" aria-label="結果を閉じて最後のおにわを見る" title="最後のおにわを見る"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
             <div class="menu-symbol star-symbol"><svg><use href="#i-star"/></svg></div><div class="eyebrow" id="end-eyebrow">よく そだったね！</div><h2 id="end-title">また あそぼう！</h2><div class="result-level">レベル <strong id="result-level">1</strong></div><p class="result-stats" id="result-stats"></p><p class="garden-stats" id="garden-stats"></p>
             <form class="record-form" id="record-form">
               <label for="nickname">ランキングに のせよう！</label>
