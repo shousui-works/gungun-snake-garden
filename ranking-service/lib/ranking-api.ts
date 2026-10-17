@@ -92,9 +92,11 @@ export async function handleRankingRequest(request: Request, db: Database, now =
       if (run.used) return json(await leaderboard(db, run.difficulty, owner));
       if (now - run.started_at > LIFETIME) throw new ApiError(410, 'expired_run');
       const name = normalizeNickname(body.name), { level, xp, seconds } = body;
-      if (!Number.isSafeInteger(level) || level < 1 || level > 100 || !Number.isSafeInteger(xp) || xp < 0 || xp >= 5 + 2 * (level - 1) || !Number.isFinite(seconds) || seconds < 0 || seconds * 1000 > now - run.started_at + 10000) throw new ApiError(400, 'invalid_score');
+      if (!Number.isSafeInteger(level) || level < 1 || !Number.isSafeInteger(xp) || xp < 0 || xp >= 5 + 2 * (level - 1) || !Number.isFinite(seconds) || seconds < 0 || seconds * 1000 > now - run.started_at + 10000) throw new ApiError(400, 'invalid_score');
       const score = totalExperience(level, xp);
-      if (score > 50 + seconds * 20) throw new ApiError(400, 'invalid_score');
+      // Enemy and treasure rewards grow with level; a fixed XP/second limit rejects real runs.
+      // The game continues past level 100. Keep integer/time validation without imposing a separate level cap.
+      if (!Number.isSafeInteger(score)) throw new ApiError(400, 'invalid_score');
       // A conditional insert and ticket consumption share one D1 transaction.
       await db.batch([
         db.prepare(`INSERT INTO records (id, owner, difficulty, name, level, xp, score, updated_at)

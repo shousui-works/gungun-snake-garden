@@ -37,3 +37,18 @@ test('nicknames accept short Japanese names and reject empty, oversized, control
   assert.equal(normalizePlayerName('  Ａヘビ  '),'Aヘビ'); assert.equal(normalizePlayerName('🍎'.repeat(12)),'🍎'.repeat(12));
   for(const name of ['', 'あ'.repeat(13), '<img>', 'ヘビ\u202e']) assert.equal(normalizePlayerName(name),null);
 });
+test('a rejected high-level result can be retried intact with its original ticket', async () => {
+  const saved = storage(), requests = []; let attempts = 0;
+  const client = new RankingClient(saved, async (url, options) => {
+    if (url.endsWith('/runs')) return Response.json({ ticket: 'original-high-level-run' });
+    requests.push(JSON.parse(options.body));
+    return ++attempts === 1 ? Response.json({ error: 'invalid_score' }, { status: 400 }) : Response.json({ personal: { rank: 1, level: 99, xp: 200 } });
+  });
+  const result = { run: client.begin('hard'), level: 99, xp: 200, seconds: 120 };
+  await assert.rejects(client.submit(result, 'ともも'), /invalid_score/);
+  assert.equal(saved.get('snake-garden-nickname', ''), '');
+  const board = await client.submit(result, 'ともも');
+  assert.equal(board.personal.level, 99); assert.equal(result.level, 99); assert.equal(result.xp, 200);
+  assert.deepEqual(requests, Array(2).fill({ ticket: 'original-high-level-run', name: 'ともも', level: 99, xp: 200, seconds: 120 }));
+  assert.equal(saved.get('snake-garden-nickname', ''), 'ともも');
+});

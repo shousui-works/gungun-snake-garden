@@ -68,9 +68,32 @@ test('record dates come from the server, persist on retries and lower or equal s
 test('writes require the run owner, valid score, bounded nickname and unexpired ticket', async () => {
   const db = database(), ticket = await begin(db);
   assert.equal((await submit(db, playerB, ticket, 1, 0)).status, 403);
-  for (const [level, xp, name] of [[-1,0,'ヘビ'], [2,7,'ヘビ'], [2,0,''], [2,0,'<script>'], [2,0,'あ'.repeat(13)], [100,0,'ヘビ']]) assert.equal((await submit(db, playerA, ticket, level, xp, name)).status, 400);
+  for (const [level, xp, name] of [[-1,0,'ヘビ'], [2,7,'ヘビ'], [2,0,''], [2,0,'<script>'], [2,0,'あ'.repeat(13)], [Number.MAX_SAFE_INTEGER,0,'ヘビ'], [2.5,0,'ヘビ'], [2,-1,'ヘビ'], [2,1.5,'ヘビ']]) assert.equal((await submit(db, playerA, ticket, level, xp, name)).status, 400);
   assert.equal((await submit(db, playerA, ticket, 1, 0, 'ヘビ', 10000 + 49*3600000)).status, 410);
   assert.equal((await handleRankingRequest(request('/api/runs', null, {difficulty:'normal'}), db)).status, 401);
+});
+test('high-level runs and levels above 100 register without a flat XP rate limit, including retrying a rejected ticket', async () => {
+  const db = database();
+  for (const [level, xp, seconds] of [[99, 200, 120], [137, 45, 180]]) {
+    const start = 10000, now = start + seconds * 1000;
+    const ticket = await begin(db, playerA, 'hard', start);
+    // Invalid input must not consume the ticket or prevent a corrected retry.
+    const invalid = await handleRankingRequest(request('/api/records', playerA, { ticket, name: 'ともも', level, xp: 2 * level + 3, seconds }), db, now);
+    assert.equal(invalid.status, 400);
+    const response = await handleRankingRequest(request('/api/records', playerA, { ticket, name: 'ともも', level, xp, seconds }), db, now);
+    assert.equal(response.status, 200);
+    const board = await response.json();
+    assert.equal(board.personal.level, level); assert.equal(board.personal.xp, xp);
+    assert.equal(board.personal.name, 'ともも'); assert.equal(board.entries.length, 1);
+    assert.ok(totalExperience(level, xp) > 50 + seconds * 20);
+    const retry = await handleRankingRequest(request('/api/records', playerA, { ticket, name: 'ともも', level: level + 1, xp: 0, seconds }), db, now + 1000);
+    assert.equal((await retry.json()).personal.level, level);
+  }
+  const ticket = await begin(db);
+  for (const seconds of [-1, null, 1000]) {
+    const response = await handleRankingRequest(request('/api/records', playerA, { ticket, name: 'ヘビ', level: 99, xp: 0, seconds }), db, 20000);
+    assert.equal(response.status, 400);
+  }
 });
 test('cross-origin preflight permits game and rejects other sites; large bodies and spam are bounded', async () => {
   const db = database();

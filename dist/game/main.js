@@ -157,7 +157,7 @@ const rankingErrors = {
   invalid_name: 'ニックネームを 1〜12文字で入れてね。',
   run_unavailable: 'このプレイの記録を登録できなかったよ。ネットにつないで、次のプレイでまたためしてね。',
   expired_run: 'この記録の登録期限がすぎたよ。また あそぼう！',
-  invalid_score: 'この記録は登録できなかったよ。次のプレイでまたためしてね。',
+  invalid_score: 'この記録を確認できなかったよ。ページを閉じずに「もう一度」でためしてね。',
 };
 $('record-form').addEventListener('submit', async event => {
   event.preventDefault(); if (submitting || !completedRun || completedRun.saved) return;
