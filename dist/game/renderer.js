@@ -31,10 +31,13 @@ export class Renderer {
     this.dpr = Math.min(window.devicePixelRatio || 1, 2);
     this.canvas.width = Math.round(this.width * this.dpr); this.canvas.height = Math.round(this.height * this.dpr);
     this.scale = viewScaleFor(this.width, this.height, this.viewMode);
-    this.simulation.viewport = { width: this.width / this.scale, height: this.height / this.scale };
+    this.simulation.viewport = { width: this.width / this.scale, height: this.height / this.scale, x: this.camera.x, y: this.camera.y };
   }
   setViewMode(mode) { this.viewMode = viewModeFor(mode); this.resize(); }
-  resetCamera() { this.camera = { x: this.simulation.player.x, y: this.simulation.player.y }; this.directionCue = null; }
+  resetCamera() {
+    this.camera = { x: this.simulation.player.x, y: this.simulation.player.y }; this.directionCue = null;
+    this.simulation.viewport.x = this.camera.x; this.simulation.viewport.y = this.camera.y;
+  }
   screenPosition(point) {
     return { x: this.width / 2 + (point.x - this.camera.x) * this.scale, y: this.height / 2 + (point.y - this.camera.y) * this.scale, radius: (point.radius || 0) * this.scale };
   }
@@ -50,6 +53,7 @@ export class Renderer {
     const x = clamp(p.x, Math.min(halfW, 800), Math.max(1600 - halfW, 800));
     const y = clamp(p.y, Math.min(halfH, 800), Math.max(1600 - halfH, 800));
     this.camera.x += (x - this.camera.x) * follow; this.camera.y += (y - this.camera.y) * follow;
+    sim.viewport.x = this.camera.x; sim.viewport.y = this.camera.y;
     c.setTransform(this.dpr, 0, 0, this.dpr, 0, 0); c.fillStyle = '#b9cda8'; c.fillRect(0, 0, this.width, this.height);
     c.translate(this.width / 2, this.height / 2); c.scale(this.scale, this.scale); c.translate(-this.camera.x, -this.camera.y);
     c.fillStyle = '#cedfbc'; c.fillRect(0, 0, 1600, 1600);

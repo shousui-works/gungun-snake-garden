@@ -49,6 +49,7 @@ export class Simulation {
     this.flowers ??= []; this.gardenRevision ??= 0;
     for (const flower of this.flowers) flower.bloomTimer = 0;
     this.flowersPlanted = 0; this.treasuresCaught = 0; this.treasure = null; this.treasureNextAt = CONFIG.treasureFirstSeconds;
+    this.enemyRefreshAt = 0;
     this.player = makeSnake(800, 800, -Math.PI / 2, 1, 'player', [CONFIG.playerColor, CONFIG.playerDark]);
     this.food = [];
     for (let i = 0; i < 7; i++) this.food.push({ x: 800 + Math.sin(i * .7) * 8, y: 754 - i * 43, phase: this.random() * 6, kind: FRUIT_KINDS[i % 3], large: false });
@@ -183,16 +184,27 @@ export class Simulation {
     }
     if (this.particles.length > 220) this.particles.splice(0, this.particles.length - 220);
   }
+  enemyPressure() {
+    const late = this.settings.lateGame;
+    const progress = clamp((this.player.level - late.startLevel) / (100 - late.startLevel), 0, 1);
+    return {
+      chaseRange: this.settings.chaseRange + (late.chaseRange - this.settings.chaseRange) * progress,
+      chaseSeconds: this.settings.chaseSeconds + (late.chaseSeconds - this.settings.chaseSeconds) * progress,
+      strongOffsetMax: Math.round(this.settings.strongOffsetMax + (late.strongOffsetMax - this.settings.strongOffsetMax) * progress),
+      strongEnemies: this.player.level < late.startLevel ? 0 : Math.min(late.strongEnemies, progress < .5 ? 1 : 2),
+    };
+  }
   updateEnemy(e, dt) {
     e.aiWait -= dt; e.chaseCooldown = Math.max(0, e.chaseCooldown - dt);
     if (e.aiWait > 0) return;
     e.aiWait = this.settings.aiWait + this.random() * this.settings.aiJitter;
     const stronger = [this.player, ...this.enemies].filter(s => s !== e && s.active && s.level > e.level && distance(s, e) < 200).sort((a, b) => distance(a, e) - distance(b, e))[0];
     if (stronger) { e.targetAngle = Math.atan2(e.y - stronger.y, e.x - stronger.x); e.chaseTime = 0; return; }
-    if (e.level > this.player.level && this.protection <= 0 && distance(e, this.player) < this.settings.chaseRange && e.chaseCooldown <= 0) {
+    const pressure = this.enemyPressure();
+    if (e.level > this.player.level && this.protection <= 0 && distance(e, this.player) < pressure.chaseRange && e.chaseCooldown <= 0) {
       e.chaseTime += e.aiWait;
       e.targetAngle = Math.atan2(this.player.y - e.y, this.player.x - e.x);
-      if (e.chaseTime > this.settings.chaseSeconds) { e.chaseCooldown = this.settings.chaseCooldown; e.chaseTime = 0; }
+      if (e.chaseTime > pressure.chaseSeconds) { e.chaseCooldown = this.settings.chaseCooldown; e.chaseTime = 0; }
       return;
     }
     e.chaseTime = 0;
@@ -201,19 +213,41 @@ export class Simulation {
     if (!nearest) return;
     e.targetAngle = Math.atan2(nearest.y - e.y, nearest.x - e.x) + (this.random() - .5) * .4;
   }
-  tryRespawn(e) {
-    const p = this.player, halfW = this.viewport.width / 2 + 80, halfH = this.viewport.height / 2 + 80;
+  outsideView(snake) {
+    const { width, height, x = this.player.x, y = this.player.y } = this.viewport;
+    const halfW = width / 2 + 80, halfH = height / 2 + 80;
+    return [snake, ...snake.body].every(pt => Math.abs(pt.x - x) >= halfW || Math.abs(pt.y - y) >= halfH);
+  }
+  tryRespawn(e, replacing = false) {
+    const p = this.player, pressure = this.enemyPressure();
+    const strongCount = this.enemies.filter(other => other !== e && other.active && other.level > p.level).length;
+    const needsStrong = strongCount < pressure.strongEnemies;
     for (let i = 0; i < 35; i++) {
       const x = 130 + this.random() * 1340, y = 130 + this.random() * 1340;
-      if (distance({ x, y }, p) < 420 || (Math.abs(x - p.x) < halfW && Math.abs(y - p.y) < halfH)) continue;
-      const offset = this.random() < 1 - this.settings.strongChance ? -(1 + Math.floor(this.random() * 2)) : 1 + Math.floor(this.random() * this.settings.strongOffsetMax);
+      if (distance({ x, y }, p) < 420 || !this.outsideView({ x, y, body: [] })) continue;
+      // Once threats are replenished, replacements stay edible; normal respawns keep their mix.
+      const strong = needsStrong || (!replacing && this.random() >= 1 - this.settings.strongChance);
+      const offset = strong ? 1 + Math.floor(this.random() * pressure.strongOffsetMax) : -(1 + Math.floor(this.random() * 2));
       const angle = Math.atan2(800 - y, 800 - x);
       const fresh = makeSnake(x, y, angle, Math.max(1, p.level + offset), e.id, e.colors);
-      // Keep the full new body outside the viewport, not just its head.
-      if (fresh.body.some(pt => Math.abs(pt.x - p.x) < halfW && Math.abs(pt.y - p.y) < halfH)) continue;
-      Object.assign(e, fresh); return;
+      // A new head must not appear near the player's long, off-screen tail.
+      if (!this.outsideView(fresh) || touching(fresh, p.body, p.radius + fresh.radius + 180)) continue;
+      Object.assign(e, fresh); return true;
     }
-    e.respawn = .5;
+    if (!e.active) e.respawn = .5;
+    return false;
+  }
+  refreshEnemies() {
+    const p = this.player, late = this.settings.lateGame;
+    if (p.level < late.startLevel || this.time < this.enemyRefreshAt) return;
+    const pressure = this.enemyPressure();
+    const needsStrong = this.enemies.filter(e => e.active && e.level > p.level).length < pressure.strongEnemies;
+    const candidate = this.enemies.filter(e => e.active && e.level < p.level &&
+      (needsStrong || p.level - e.level >= late.refreshLevelGap) && distance(e, p) >= 420 && this.outsideView(e))
+      .sort((a, b) => a.level - b.level)[0];
+    if (!candidate) return;
+    // Replace atomically: if no safe position exists, the old snake stays intact.
+    this.enemyRefreshAt = this.time + (this.tryRespawn(candidate, true) ? late.refreshSeconds : 1);
   }
   resolveCollisions() {
     if (this.state !== 'playing') return;
@@ -277,5 +311,6 @@ export class Simulation {
       const i = this.enemies.length, e = makeSnake(0, 0, 0, 1, `enemy${i}`, CONFIG.enemyColors[i]);
       e.active = false; e.respawn = 1; this.enemies.push(e);
     }
+    this.refreshEnemies();
   }
 }

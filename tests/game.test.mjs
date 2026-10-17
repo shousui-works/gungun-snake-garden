@@ -62,7 +62,7 @@ test('turns are gradual, edges are safe, and long frame deltas are capped', () =
 test('movement is equally fast for the player and ordinary enemies at every level', () => {
   for (const difficulty of ['easy', 'normal', 'hard']) {
     const travelled = [];
-    for (const level of [1, 5, 12]) {
+    for (const level of [1, 5, 12, 50, 100]) {
       const s = new Simulation(seeded(), difficulty); s.start(); s.food = [];
       s.player = makeSnake(300, 500, 0, level, 'player', [CONFIG.playerColor, CONFIG.playerDark]);
       const e = makeSnake(300, 1100, 0, level, 'test', CONFIG.enemyColors[0]); e.aiWait = 100; s.enemies = [e];
@@ -73,7 +73,7 @@ test('movement is equally fast for the player and ordinary enemies at every leve
       assert.ok(Math.abs(playerDistance - enemyDistance) < .001);
       travelled.push(playerDistance);
     }
-    assert.deepEqual(travelled, [travelled[0], travelled[0], travelled[0]]);
+    assert.ok(travelled.every(value => value === travelled[0]));
   }
 });
 test('body spacing is based on distance and history stays bounded at high frame rates', () => {
@@ -92,7 +92,7 @@ test('respawn stays away from the player and outside the entire viewport', () =>
   assert.ok(e.body.every(pt => Math.abs(pt.x - s.player.x) >= hw || Math.abs(pt.y - s.player.y) >= hh));
 });
 test('five minute maximum population run keeps entities and effects bounded', () => {
-  const s = new Simulation(seeded(), 'hard'); s.start(); s.player.level = 16; s.player.radius = radiusFor(16); s.protection = 1000;
+  const s = new Simulation(seeded(), 'hard'); s.start(); s.player.level = 100; s.player.radius = radiusFor(100); updateBody(s.player); s.protection = 1000;
   for (let i = 0; i < 18000; i++) {
     s.step(1 / 60, i / 200); s.events.length = 0;
   }

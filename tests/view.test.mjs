@@ -41,6 +41,22 @@ test('resize and view changes update the real visible area, retain gameplay, and
   assert.deepEqual(simulation.player,before.player); assert.equal(simulation.time,before.time); assert.equal(simulation.flowers,before.flowers); assert.equal(simulation.state,'playing');
   renderer.setViewMode('invalid'); assert.equal(renderer.viewMode,'wide'); delete globalThis.window;
 });
+test('the spawn viewport follows the actual camera near walls, after resize and after restarting',()=>{
+  const {canvas,simulation,renderer}=layout();
+  renderer.ctx=paintContext().ctx;renderer.clock=0;renderer.decorations=[];
+  renderer.drawSnake=()=>{};renderer.drawGrowthLabel=()=>{};
+  Object.assign(simulation,{enemies:[],food:[],flowers:[],particles:[],popups:[],treasure:null});
+  simulation.player.x=30;simulation.player.y=30;
+  renderer.draw(.05);
+  assert.equal(simulation.viewport.x,renderer.camera.x);assert.equal(simulation.viewport.y,renderer.camera.y);
+  assert.notEqual(simulation.viewport.x,simulation.player.x);
+  assert.notEqual(simulation.viewport.y,simulation.player.y);
+  canvas.rect={...canvas.rect,width:828,height:374};renderer.setViewMode('large');
+  assert.equal(simulation.viewport.width,828/renderer.scale);assert.equal(simulation.viewport.x,renderer.camera.x);
+  simulation.player.x=800;simulation.player.y=800;renderer.resetCamera();
+  assert.equal(simulation.viewport.x,800);assert.equal(simulation.viewport.y,800);
+  delete globalThis.window;
+});
 function paintContext() {
   const text=[], cards=[], transforms=[];
   const target={measureText:s=>({width:s.length*6}),fillText(value,x,y){text.push({value,x,y,font:this.font});},roundRect(x,y,w,h){cards.push({x,y,w,h});},setTransform(...args){transforms.push(args);}};

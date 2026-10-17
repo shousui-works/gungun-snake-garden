@@ -61,7 +61,7 @@ test('the long final transformation announcement stays readable inside a narrow 
   r.width=308;r.height=561;r.dpr=2;r.decorations=[];
   r.ctx.measureText=value=>({width:[...value].length*parseFloat(r.ctx.font.split(' ')[1])});
   r.ctx.strokeText=(value,x,y)=>text.push({value,x,y,font:r.ctx.font,width:r.ctx.measureText(value).width});
-  Object.assign(r.simulation,{player:s,state:'playing',enemies:[],food:[],flowers:[],particles:[],treasure:null,popups:[{text:'にじの王さまに へんしん！',x:20,y:-55,life:1.8,large:true}]});
+  Object.assign(r.simulation,{player:s,state:'playing',viewport:{width:r.width/r.scale,height:r.height/r.scale},enemies:[],food:[],flowers:[],particles:[],treasure:null,popups:[{text:'にじの王さまに へんしん！',x:20,y:-55,life:1.8,large:true}]});
   r.draw(.016);
   assert.equal(text.length,1); assert.ok(parseFloat(text[0].font.split(' ')[1])>=14);
   assert.ok(text[0].x-text[0].width/2>=9.9);assert.ok(text[0].x+text[0].width/2<=298.1);assert.ok(text[0].y>=32);
