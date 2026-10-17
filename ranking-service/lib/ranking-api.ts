@@ -1,7 +1,7 @@
 type Statement = { bind(...values: unknown[]): Statement; first<T = Record<string, unknown>>(): Promise<T | null>; all<T = Record<string, unknown>>(): Promise<{ results: T[] }> };
 type Database = { prepare(sql: string): Statement; batch(statements: Statement[]): Promise<unknown> };
 type Run = { owner: string; difficulty: string; started_at: number; used: number };
-type RecordRow = { owner: string; name: string; level: number; xp: number; score: number; rank: number };
+type RecordRow = { owner: string; name: string; level: number; xp: number; score: number; updated_at: number; rank: number };
 const MODES = ['easy', 'normal', 'hard'];
 const TOKEN = /^[a-f0-9]{64}$/;
 const TICKET = /^[a-f0-9-]{36}$/;
@@ -46,11 +46,11 @@ function difficultyFor(value: unknown) {
   return value;
 }
 function publicRecord(record: RecordRow, owner: string | null) {
-  return { name: record.name, level: record.level, xp: record.xp, rank: record.rank, isYou: record.owner === owner };
+  return { name: record.name, level: record.level, xp: record.xp, rank: record.rank, isYou: record.owner === owner, recordedAt: new Date(record.updated_at).toISOString() };
 }
 async function leaderboard(db: Database, difficulty: string, owner: string | null) {
-  const rows = await db.prepare('SELECT owner, name, level, xp, score, RANK() OVER (ORDER BY score DESC) AS rank FROM records WHERE difficulty = ? ORDER BY score DESC, updated_at ASC, id ASC LIMIT 20').bind(difficulty).all<RecordRow>();
-  const mine = owner ? await db.prepare('SELECT owner, name, level, xp, score, (SELECT COUNT(*) + 1 FROM records r WHERE r.difficulty = records.difficulty AND r.score > records.score) AS rank FROM records WHERE owner = ? AND difficulty = ?').bind(owner, difficulty).first<RecordRow>() : null;
+  const rows = await db.prepare('SELECT owner, name, level, xp, score, updated_at, RANK() OVER (ORDER BY score DESC) AS rank FROM records WHERE difficulty = ? ORDER BY score DESC, updated_at ASC, id ASC LIMIT 20').bind(difficulty).all<RecordRow>();
+  const mine = owner ? await db.prepare('SELECT owner, name, level, xp, score, updated_at, (SELECT COUNT(*) + 1 FROM records r WHERE r.difficulty = records.difficulty AND r.score > records.score) AS rank FROM records WHERE owner = ? AND difficulty = ?').bind(owner, difficulty).first<RecordRow>() : null;
   return { difficulty, entries: rows.results.map(row => publicRecord(row, owner)), personal: mine ? publicRecord(mine, owner) : null };
 }
 export async function handleRankingRequest(request: Request, db: Database, now = Date.now()) {

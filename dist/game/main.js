@@ -4,7 +4,7 @@ import { InputController } from './input.js';
 import { GameAudio } from './audio.js';
 import { DIFFICULTIES } from './config.js';
 import { experienceNeeded, appearanceFor, nextAppearance } from './rules.js';
-import { RankingClient, normalizePlayerName } from './ranking.js';
+import { RankingClient, normalizePlayerName, formatRecordDate } from './ranking.js';
 import { VIEW_MODES, viewModeFor } from './view.js';
 
 const $ = id => document.getElementById(id);
@@ -104,6 +104,14 @@ function finish() {
   $('nickname').value = normalizePlayerName(nickname) || `${['りんご', 'バナナ', 'ぶどう'][Math.floor(Math.random() * 3)]}ヘビ${Math.floor(Math.random() * 90) + 10}`;
   showMenu('end-menu'); $('again-button').focus({ preventScroll: true });
 }
+function appendRecordTime(container, recordedAt) {
+  const formatted = formatRecordDate(recordedAt);
+  if (!formatted) return;
+  const time = document.createElement('time'); time.className = 'ranking-date';
+  time.dateTime = recordedAt; time.textContent = formatted;
+  time.setAttribute('aria-label', `自己ベストの登録日時 ${formatted} 日本時間`);
+  container.append(time);
+}
 function displayBoard(data) {
   $('ranking-list').replaceChildren();
   for (const row of data.entries) {
@@ -111,6 +119,7 @@ function displayBoard(data) {
     const rank = document.createElement('span'); rank.className = `ranking-place place-${row.rank}`; rank.textContent = row.rank;
     const name = document.createElement('span'); name.className = 'ranking-name'; name.textContent = row.name;
     if (row.isYou) { const you = document.createElement('small'); you.textContent = 'あなた'; name.append(you); }
+    appendRecordTime(name, row.recordedAt);
     const score = document.createElement('span'); score.className = 'ranking-score';
     const level = document.createElement('strong'); level.textContent = `Lv. ${row.level}`;
     const xp = document.createElement('small'); xp.textContent = `経験値 ${row.xp} / ${experienceNeeded(row.level)}`;
@@ -119,7 +128,10 @@ function displayBoard(data) {
   $('ranking-personal').classList.toggle('hidden', !data.personal);
   $('ranking-delete-button').classList.toggle('hidden', !data.personal);
   $('ranking-delete-confirm').classList.add('hidden');
-  if (data.personal) $('ranking-personal').textContent = `あなたの自己ベスト ${data.personal.rank}位 ・ Lv. ${data.personal.level} ・ 経験値 ${data.personal.xp}`;
+  if (data.personal) {
+    $('ranking-personal').textContent = `あなたの自己ベスト ${data.personal.rank}位 ・ Lv. ${data.personal.level} ・ 経験値 ${data.personal.xp}`;
+    appendRecordTime($('ranking-personal'), data.personal.recordedAt);
+  }
   $('ranking-message').textContent = data.entries.length ? '' : 'まだ記録がないよ。最初のヘビになろう！';
 }
 async function loadBoard() {

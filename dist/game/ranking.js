@@ -1,4 +1,10 @@
 export const RANKING_URL = 'https://gungun-snake-garden-ranking.loyal-wave-1919.chatgpt.site';
+const recordDateFormatter = new Intl.DateTimeFormat('ja-JP', { timeZone: 'Asia/Tokyo', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+export function formatRecordDate(recordedAt) {
+  if (typeof recordedAt !== 'string' || !recordedAt.trim()) return '';
+  const date = new Date(recordedAt);
+  return Number.isFinite(date.getTime()) ? recordDateFormatter.format(date) : '';
+}
 export function normalizePlayerName(value) {
   const name = String(value ?? '').normalize('NFKC').trim().replace(/\s+/g, ' ');
   const length = [...new Intl.Segmenter('ja', { granularity: 'grapheme' }).segment(name)].length;

@@ -1,7 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { RankingClient, normalizePlayerName, RANKING_URL } from '../dist/game/ranking.js';
+import { RankingClient, normalizePlayerName, formatRecordDate, RANKING_URL } from '../dist/game/ranking.js';
 const storage = () => { const map = new Map(); return { get: (key,fallback) => map.get(key) ?? fallback, set: (key,value) => map.set(key,value) }; };
+test('record dates always use Japan time, including midnight and year boundaries', () => {
+  assert.equal(formatRecordDate('2026-10-17T09:25:10.000Z'), '2026/10/17 18:25');
+  assert.equal(formatRecordDate('2026-10-17T15:00:00.000Z'), '2026/10/18 00:00');
+  assert.equal(formatRecordDate('2026-12-31T23:59:00.000Z'), '2027/01/01 08:59');
+  for (const missing of [null, undefined, '', '  ', 'not-a-date', '<script>', 0, {}]) assert.equal(formatRecordDate(missing), '');
+});
 test('a private random browser key persists, never appears in URLs, and requests omit cookies', async () => {
   const saved=storage(), calls=[];
   const fetcher=async (url,options)=>{ calls.push({url,options}); return Response.json({entries:[],personal:null}); };

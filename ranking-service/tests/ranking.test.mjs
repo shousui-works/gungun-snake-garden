@@ -42,6 +42,29 @@ test('each browser keeps one best per mode and retries cannot change a consumed 
   const board = await (await handleRankingRequest(request('/api/leaderboard?difficulty=normal'), db)).json();
   assert.equal(board.entries.length, 1); assert.equal(board.personal.level, 4); assert.equal(board.personal.xp, 2); assert.equal(board.personal.name, 'バナナヘビ');
 });
+test('record dates come from the server, persist on retries and lower or equal scores, and change only for a new best', async () => {
+  const db = database(), start = Date.UTC(2026, 9, 17, 9, 25), firstAt = start + 5000;
+  const ticket = await begin(db, playerA, 'normal', start);
+  const response = await handleRankingRequest(request('/api/records', playerA, { ticket, level: 2, xp: 0, name: 'ヘビ', seconds: 5, recordedAt: '2099-01-01T00:00:00.000Z' }), db, firstAt);
+  assert.equal(response.status, 200);
+  const first = await response.json(), originalDate = new Date(firstAt).toISOString();
+  assert.equal(first.entries[0].recordedAt, originalDate);
+  assert.equal(first.personal.recordedAt, originalDate);
+  const replay = await (await submit(db, playerA, ticket, 3, 0, 'ヘビ', firstAt + 1000)).json();
+  assert.equal(replay.personal.recordedAt, originalDate);
+  for (const [i, level] of [1, 2].entries()) {
+    const next = await begin(db, playerA, 'normal', firstAt + 2000 + i * 1000);
+    const kept = await (await submit(db, playerA, next, level, 0, 'お花ヘビ', firstAt + 2500 + i * 1000)).json();
+    assert.equal(kept.personal.recordedAt, originalDate);
+    assert.equal(kept.personal.level, 2);
+  }
+  const next = await begin(db, playerA, 'normal', firstAt + 4000), betterAt = firstAt + 9000;
+  const better = await (await submit(db, playerA, next, 3, 0, 'ヘビ', betterAt)).json();
+  assert.equal(better.personal.recordedAt, new Date(betterAt).toISOString());
+  const publicBoard = await (await handleRankingRequest(request('/api/leaderboard?difficulty=normal', null), db)).json();
+  assert.equal(publicBoard.entries[0].recordedAt, better.personal.recordedAt);
+  assert.equal(publicBoard.entries[0].isYou, false);
+});
 test('writes require the run owner, valid score, bounded nickname and unexpired ticket', async () => {
   const db = database(), ticket = await begin(db);
   assert.equal((await submit(db, playerB, ticket, 1, 0)).status, 403);
@@ -63,6 +86,7 @@ test('top 20 is bounded while personal rank remains visible outside that list', 
   for(let i=0;i<22;i++) { const token=i.toString(16).padStart(64,'0'), ticket=await begin(db,token); await submit(db,token,ticket,1+Math.floor(i/5),i%5,'ヘビ'+i); }
   const board=await (await handleRankingRequest(request('/api/leaderboard?difficulty=normal', '0'.repeat(64)),db)).json();
   assert.equal(board.entries.length,20); assert.equal(board.personal.rank,22); assert.equal(board.entries.some(row=>row.isYou),false);
+  assert.equal(board.personal.recordedAt, new Date(20000).toISOString());
 });
 
 test('custom domain can register, read and delete its own record; similar origins are rejected', async () => {

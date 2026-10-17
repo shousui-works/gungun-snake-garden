@@ -52,6 +52,7 @@
 .ranking-row.is-you{background:#f3edf9}.ranking-place{display:grid;place-items:center;width:27px;height:27px;color:#909980;font:700 13px system-ui,sans-serif;border-radius:50%}
 .place-1{background:#f2e6bc;color:#a0802c}.place-2{background:#e6e8e0;color:#7b8371}.place-3{background:#efddd0;color:#ac7756}
 .ranking-name{font-size:12px;font-weight:700;overflow-wrap:anywhere;line-height:1.5}.ranking-name small{display:block;font-size:9px;color:#9676bc}
+.ranking-date{display:block;margin-top:3px;font:400 10px/1.5 system-ui,sans-serif;font-variant-numeric:tabular-nums;color:#7e8775;overflow-wrap:normal}
 .ranking-score{text-align:right;white-space:nowrap}.ranking-score strong{display:block;font:800 16px system-ui,sans-serif;color:#7658b2}.ranking-score small{font-size:9px;color:#929882}
 .ranking-message{font-size:12px;line-height:1.8;color:#829073;margin:12px 0;flex-shrink:0}.ranking-message:empty{display:none}
 .ranking-actions{display:grid;grid-template-columns:1fr 1.4fr;gap:10px;margin-top:16px;flex-shrink:0}.ranking-actions .secondary-button{margin:0}.ranking-actions .primary-button{min-height:50px;font-size:15px}
