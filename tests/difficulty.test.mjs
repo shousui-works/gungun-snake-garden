@@ -62,12 +62,12 @@ test('respawns have fewer stronger enemies on easier modes and respect level lim
   }
   assert.ok(stronger[0] < stronger[1] && stronger[1] < stronger[2]);
 });
-test('switching modes resets the run, preserves flowers, and keeps the mode on restart', () => {
+test('switching modes resets the run and flowers, and keeps the mode on restart', () => {
   const s = new Simulation(seeded(), 'hard'); s.start(); s.reward(20, 300, 400, false, { kind: 'apple' });
-  s.treasuresCaught = 2; s.pause(); const flowers = s.flowers.length;
+  s.treasuresCaught = 2; s.pause(); assert.ok(s.flowers.length > 0);
   s.reset('easy');
   assert.equal(s.state, 'ready'); assert.equal(s.difficulty, 'easy'); assert.equal(s.enemies.length, 3);
-  assert.equal(s.flowers.length, flowers); assert.equal(s.player.level, 1); assert.equal(s.player.xp, 0);
+  assert.equal(s.flowers.length, 0); assert.equal(s.flowersPlanted, 0); assert.equal(s.player.level, 1); assert.equal(s.player.xp, 0);
   assert.equal(s.treasuresCaught, 0); assert.equal(s.protection, 8);
   s.start(); s.reset(); assert.equal(s.difficulty, 'easy'); assert.equal(s.protection, 8);
   // Easy mode still has the normal risk from a stronger head after protection ends.

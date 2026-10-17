@@ -23,7 +23,7 @@ export class Renderer {
   constructor(canvas, simulation, viewMode = 'wide') {
     this.canvas = canvas; this.simulation = simulation; this.ctx = canvas.getContext('2d', { alpha: false }); this.camera = { x: 800, y: 800 }; this.clock = 0;
     this.viewMode = viewModeFor(viewMode);
-    this.decorations = Array.from({ length: 135 }, (_, i) => ({ x: ((i * 227 + 61) % 1500) + 50, y: ((i * 379 + 137) % 1500) + 50, type: i % 5, rotation: i * 1.62 }));
+    this.decorations = Array.from({ length: 135 }, (_, i) => ({ x: ((i * 227 + 61) % 1500) + 50, y: ((i * 379 + 137) % 1500) + 50, rotation: i * 1.62 })).filter((_, i) => i % 5 < 3);
     this.observer = new ResizeObserver(() => this.resize()); this.observer.observe(canvas); this.resize();
   }
   resize() {
@@ -127,14 +127,9 @@ export class Renderer {
   }
   drawPlant(d) {
     const c = this.ctx; c.save(); c.translate(d.x, d.y); c.rotate(d.rotation);
-    if (d.type <= 2) {
-      c.strokeStyle = '#9ab17e88'; c.lineWidth = 1.7; c.lineCap = 'round'; c.beginPath();
-      c.moveTo(-5,4); c.quadraticCurveTo(-7,-1,-4,-5); c.moveTo(0,4); c.quadraticCurveTo(-2,-3,1,-7); c.moveTo(4,4); c.quadraticCurveTo(3,0,7,-3); c.stroke();
-    } else {
-      c.fillStyle = d.type === 3 ? '#f8f9eaaa' : '#b0c39480';
-      for (let i = 0; i < 5; i++) { const a = i * Math.PI * 2 / 5; circle(c, Math.cos(a) * 3.4, Math.sin(a) * 3.4, 2.9); c.fill(); }
-      c.fillStyle = '#d1bc6880'; circle(c, 0, 0, 1.7); c.fill();
-    } c.restore();
+    c.strokeStyle = '#9ab17e88'; c.lineWidth = 1.7; c.lineCap = 'round'; c.beginPath();
+    c.moveTo(-5,4); c.quadraticCurveTo(-7,-1,-4,-5); c.moveTo(0,4); c.quadraticCurveTo(-2,-3,1,-7); c.moveTo(4,4); c.quadraticCurveTo(3,0,7,-3); c.stroke();
+    c.restore();
   }
   drawFood(f) {
     const c = this.ctx, bob = Math.sin(this.clock * 2.2 + f.phase) * 1.1 - (f.flight > 0 ? Math.sin((1 - f.flight / CONFIG.fruitFlightSeconds) * Math.PI) * 32 : 0);

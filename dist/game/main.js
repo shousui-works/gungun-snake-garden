@@ -21,7 +21,8 @@ const audio = new GameAudio(storage.get('snake-garden-sound', 'on') !== 'off');
 const savedDifficulty = storage.get('snake-garden-difficulty', 'normal');
 let selectedDifficulty = Object.hasOwn(DIFFICULTIES, savedDifficulty) ? savedDifficulty : 'normal';
 const sim = new Simulation(Math.random, selectedDifficulty);
-try { sim.restoreGarden(JSON.parse(storage.get('snake-garden-garden', '[]'))); } catch { /* A damaged save never prevents play. */ }
+// Flowers belong only to this run; discard gardens saved by older versions.
+try { localStorage.removeItem('snake-garden-garden'); } catch { /* Storage is optional. */ }
 let selectedView = viewModeFor(storage.get('snake-garden-view', 'wide'));
 const renderer = new Renderer($('game-canvas'), sim, selectedView);
 const input = new InputController($('game-canvas'), sim, () => {
@@ -29,12 +30,7 @@ const input = new InputController($('game-canvas'), sim, () => {
   if (sim.state === 'over') { if (currentMenu === 'end-menu') viewFinalState(); else restoreResults(); return; }
   if (sim.state === 'playing') pause(); else if (sim.state === 'paused') resume();
 }, () => renderer.screenPosition(sim.player), angle => renderer.showDirection(angle));
-let lastStatus = 0, previous = 0, frameId = 0, bestAtStart = best, savedGardenRevision = sim.gardenRevision, lastGardenSave = 0;
-function saveGarden() {
-  if (savedGardenRevision === sim.gardenRevision) return;
-  storage.set('snake-garden-garden', JSON.stringify(sim.flowers.map(({ x, y, kind, rotation, scale }) => ({ x, y, kind, rotation, scale }))));
-  savedGardenRevision = sim.gardenRevision;
-}
+let lastStatus = 0, previous = 0, frameId = 0, bestAtStart = best;
 function showMenu(id) {
   currentMenu = id;
   $('overlay').classList.toggle('hidden', !id);
@@ -83,19 +79,19 @@ function start() {
   document.activeElement?.blur(); announce(`★ はじめの${sim.settings.protectionSeconds}びょうは まもられるよ`);
 }
 function chooseAgain() {
-  input.clear(); saveGarden(); sim.reset(selectedDifficulty); renderer.resetCamera(); updateStatus();
+  input.clear(); sim.reset(selectedDifficulty); renderer.resetCamera(); updateStatus();
   $('announcement').textContent = ''; showMenu('start-menu'); $('start-button').focus({ preventScroll: true });
 }
 function pause() {
   if (sim.state !== 'playing') return;
-  sim.pause(); input.clear(); updateStatus(); saveGarden(); showMenu('pause-menu'); $('resume-button').focus({ preventScroll: true });
+  sim.pause(); input.clear(); updateStatus(); showMenu('pause-menu'); $('resume-button').focus({ preventScroll: true });
 }
 function resume() {
   if (sim.state !== 'paused') return;
   input.clear(); sim.resume(); audio.init(); showMenu(null); document.activeElement?.blur(); previous = performance.now();
 }
 function finish() {
-  input.clear(); updateStatus(); saveGarden(); $('announcement').textContent = '';
+  input.clear(); updateStatus(); $('announcement').textContent = '';
   $('result-level').textContent = sim.player.level;
   $('end-eyebrow').textContent = sim.player.level > bestAtStart ? '★ さいこうレベル 更新！' : 'よく そだったね！';
   $('result-stats').textContent = `${sim.settings.label} ・ エサ ${sim.foodEaten}こ ・ ヘビ ${sim.enemiesEaten}ひき ぱくっ！`;
@@ -227,9 +223,7 @@ function frame(now) {
     if (event.type === 'over') finish();
   }
   if (now - lastStatus > 120) { updateStatus(); lastStatus = now; }
-  if (now - lastGardenSave > 2000) { saveGarden(); lastGardenSave = now; }
   renderer.draw(dt); frameId = requestAnimationFrame(frame);
 }
 soundUi(); difficultyUi(); viewUi(); updateStatus(); showMenu('start-menu'); frameId = requestAnimationFrame(frame);
-window.addEventListener('pagehide', saveGarden);
-window.addEventListener('unload', () => { saveGarden(); cancelAnimationFrame(frameId); renderer.destroy(); input.destroy(); audio.destroy(); });
+window.addEventListener('unload', () => { cancelAnimationFrame(frameId); renderer.destroy(); input.destroy(); audio.destroy(); });

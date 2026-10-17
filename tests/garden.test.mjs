@@ -82,22 +82,25 @@ test('flowers bloom where the player eats, while enemy meals leave the garden un
   assert.equal(e.xp, 1); assert.equal(s.flowers.length, 1);
   s.bloom(801, 800, 'banana'); assert.equal(s.flowers.length, 1);
 });
-test('pause freezes treasure, flying fruit and blooms; restart keeps the garden and clears rewards', () => {
+test('pause and game over keep this run’s flowers; restart clears the garden and rewards', () => {
   const s = isolated(); treasureAt(s, 1300, 1300); s.catchTreasure(); s.spawnTreasure(); s.bloom(200, 300, 'apple');
   s.pause(); const before = JSON.stringify(s); s.step(.05, 0); assert.equal(JSON.stringify(s), before);
-  const flowers = s.flowers.length; s.reset();
-  assert.equal(s.flowers.length, flowers); assert.ok(s.flowers.every(f => f.bloomTimer === 0));
+  assert.ok(s.flowers.length > 0); const flowers = JSON.stringify(s.flowers);
+  s.resume(); assert.equal(JSON.stringify(s.flowers), flowers);
+  s.state = 'over'; s.step(.05, 0); assert.equal(JSON.stringify(s.flowers), flowers);
+  s.reset(); assert.equal(s.flowers.length, 0);
   assert.equal(s.treasure, null); assert.equal(s.treasuresCaught, 0); assert.equal(s.flowersPlanted, 0);
   assert.equal(s.food.length, CONFIG.foodCount); assert.equal(s.treasureNextAt, CONFIG.treasureFirstSeconds);
 });
-test('garden save restores flowers with safe bounds, ignores damaged entries and limits growth', () => {
-  const s = isolated(); s.bloom(300, 400, 'grapes'); s.bloom(600, 700, 'gold');
-  const saved = JSON.parse(JSON.stringify(s.flowers)), restored = new Simulation(seeded());
-  restored.restoreGarden([...saved, null, { x: -1, y: 2, kind: 'apple' }, { x: 100, y: 100, kind: 'unknown' }, { x: 300, y: 400, kind: 'apple' }]);
-  assert.equal(restored.flowers.length, 2); assert.deepEqual(restored.flowers.map(f => [f.x, f.y, f.kind]), [[300, 400, 'grapes'], [600, 700, 'gold']]);
-  restored.restoreGarden('bad'); assert.equal(restored.flowers.length, 2);
-  for (let i = 0; i < 1000; i++) restored.bloom(25 + (i % 50) * 30, 25 + Math.floor(i / 50) * 30, 'apple');
-  assert.equal(restored.flowers.length, CONFIG.maxFlowers);
+test('each new garden starts empty and flowers stay bounded within the current run', () => {
+  const s = isolated(); assert.equal(s.flowers.length, 0);
+  for (let i = 0; i < 1000; i++) s.bloom(25 + (i % 50) * 30, 25 + Math.floor(i / 50) * 30, 'apple');
+  assert.equal(s.flowers.length, CONFIG.maxFlowers);
+  const flowersPlanted = s.flowersPlanted, last = s.flowers.at(-1);
+  s.bloom(last.x, last.y, 'gold');
+  assert.equal(s.flowers.length, CONFIG.maxFlowers); assert.equal(s.flowersPlanted, flowersPlanted);
+  assert.equal(last.kind, 'gold');
+  s.reset(); s.start(); assert.equal(s.flowers.length, 0); assert.equal(s.flowersPlanted, 0);
 });
 test('repeated captures keep loot and effects bounded, including at the world edge', () => {
   const s = isolated();

@@ -46,8 +46,7 @@ export class Simulation {
   reset(difficulty = this.difficulty ?? 'normal') {
     this.difficulty = Object.hasOwn(DIFFICULTIES, difficulty) ? difficulty : 'normal'; this.settings = DIFFICULTIES[this.difficulty];
     this.state = 'ready'; this.time = 0; this.protection = this.settings.protectionSeconds; this.foodEaten = 0; this.enemiesEaten = 0; this.events = []; this.particles = []; this.popups = []; this.combo = 0; this.comboUntil = 0;
-    this.flowers ??= []; this.gardenRevision ??= 0;
-    for (const flower of this.flowers) flower.bloomTimer = 0;
+    this.flowers = [];
     this.flowersPlanted = 0; this.treasuresCaught = 0; this.treasure = null; this.treasureNextAt = CONFIG.treasureFirstSeconds;
     this.enemyRefreshAt = 0;
     this.player = makeSnake(800, 800, -Math.PI / 2, 1, 'player', [CONFIG.playerColor, CONFIG.playerDark]);
@@ -67,19 +66,6 @@ export class Simulation {
     }
     return { x, y, phase: this.random() * Math.PI * 2, kind: FRUIT_KINDS[Math.floor(this.random() * FRUIT_KINDS.length)], large: this.random() < CONFIG.bigFruitChance };
   }
-  restoreGarden(saved) {
-    if (!Array.isArray(saved)) return;
-    const cells = new Set(), restored = [];
-    for (const f of saved.slice(-CONFIG.maxFlowers)) {
-      if (!f || !Number.isFinite(f.x) || !Number.isFinite(f.y) || f.x < 20 || f.x > CONFIG.worldSize - 20 || f.y < 20 || f.y > CONFIG.worldSize - 20) continue;
-      if (!FRUIT_KINDS.includes(f.kind) && f.kind !== 'gold') continue;
-      const key = `${Math.floor(f.x / 24)},${Math.floor(f.y / 24)}`;
-      if (cells.has(key)) continue;
-      cells.add(key);
-      restored.push({ x: f.x, y: f.y, kind: f.kind, key, rotation: Number.isFinite(f.rotation) ? clamp(f.rotation, 0, Math.PI * 2) : 0, scale: Number.isFinite(f.scale) ? clamp(f.scale, .85, 1.15) : 1, bloomTimer: 0 });
-    }
-    this.flowers = restored; this.gardenRevision++;
-  }
   bloom(x, y, kind = 'apple') {
     x = clamp(x, 20, CONFIG.worldSize - 20); y = clamp(y, 20, CONFIG.worldSize - 20);
     const key = `${Math.floor(x / 24)},${Math.floor(y / 24)}`;
@@ -90,7 +76,6 @@ export class Simulation {
       this.flowersPlanted++;
       if (this.flowers.length > CONFIG.maxFlowers) this.flowers.shift();
     }
-    this.gardenRevision++;
   }
   scheduleTreasure() { this.treasureNextAt = this.time + CONFIG.treasureIntervalSeconds + this.random() * 8; }
   spawnTreasure() {
