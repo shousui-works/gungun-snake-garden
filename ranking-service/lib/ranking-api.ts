@@ -6,7 +6,7 @@ const MODES = ['easy', 'normal', 'hard'];
 const TOKEN = /^[a-f0-9]{64}$/;
 const TICKET = /^[a-f0-9-]{36}$/;
 const LIFETIME = 48 * 60 * 60 * 1000;
-const GAME_ORIGIN = 'https://shousui-works.github.io';
+const GAME_ORIGINS = new Set(['https://shousui-works.github.io', 'https://game.ludora-base.com']);
 class ApiError extends Error {
   status: number; code: string;
   constructor(status: number, code: string) { super(code); this.status = status; this.code = code; }
@@ -56,7 +56,7 @@ async function leaderboard(db: Database, difficulty: string, owner: string | nul
 export async function handleRankingRequest(request: Request, db: Database, now = Date.now()) {
   const url = new URL(request.url), origin = request.headers.get('origin');
   const local = ['127.0.0.1', 'localhost'].includes(url.hostname);
-  const permitted = !origin || origin === GAME_ORIGIN || origin === url.origin || (local && /^http:\/\/(127\.0\.0\.1|localhost):\d+$/.test(origin));
+  const permitted = !origin || GAME_ORIGINS.has(origin) || origin === url.origin || (local && /^http:\/\/(127\.0\.0\.1|localhost):\d+$/.test(origin));
   const headers: Record<string, string> = { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'Vary': 'Origin', 'X-Content-Type-Options': 'nosniff' };
   if (origin && permitted) headers['Access-Control-Allow-Origin'] = origin;
   headers['Access-Control-Allow-Methods'] = 'GET, POST, DELETE, OPTIONS';

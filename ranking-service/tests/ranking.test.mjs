@@ -65,6 +65,34 @@ test('top 20 is bounded while personal rank remains visible outside that list', 
   assert.equal(board.entries.length,20); assert.equal(board.personal.rank,22); assert.equal(board.entries.some(row=>row.isYou),false);
 });
 
+test('custom domain can register, read and delete its own record; similar origins are rejected', async () => {
+  const db = database(), origin = 'https://game.ludora-base.com';
+  const preflight = await handleRankingRequest(new Request('https://ranking.example/api/records', { method: 'OPTIONS', headers: { Origin: origin, 'Access-Control-Request-Method': 'POST', 'Access-Control-Request-Headers': 'content-type,authorization' } }), db);
+  assert.equal(preflight.status, 204);
+  assert.equal(preflight.headers.get('access-control-allow-origin'), origin);
+  assert.match(preflight.headers.get('access-control-allow-methods'), /POST/);
+  assert.match(preflight.headers.get('access-control-allow-methods'), /DELETE/);
+  assert.match(preflight.headers.get('access-control-allow-headers'), /Authorization/);
+  const run = await handleRankingRequest(request('/api/runs', playerA, { difficulty: 'normal' }, origin), db, 10000);
+  assert.equal(run.status, 201);
+  const { ticket } = await run.json();
+  const saved = await handleRankingRequest(request('/api/records', playerA, { ticket, level: 2, xp: 0, name: 'おにわヘビ', seconds: 5 }, origin), db, 20000);
+  assert.equal(saved.status, 200);
+  assert.equal(saved.headers.get('access-control-allow-origin'), origin);
+  const board = await handleRankingRequest(request('/api/leaderboard?difficulty=normal', playerA, undefined, origin), db);
+  assert.equal(board.status, 200);
+  assert.equal((await board.json()).personal.level, 2);
+  assert.equal(board.headers.get('vary'), 'Origin');
+  for (const denied of ['http://game.ludora-base.com', 'https://game.ludora-base.com.other.example', 'https://other.ludora-base.com', 'https://ludora-base.com']) {
+    const response = await handleRankingRequest(request('/api/leaderboard?difficulty=normal', null, undefined, denied), db);
+    assert.equal(response.status, 403);
+    assert.equal(response.headers.get('access-control-allow-origin'), null);
+  }
+  const removed = await handleRankingRequest(new Request('https://ranking.example/api/records?difficulty=normal', { method: 'DELETE', headers: { Origin: origin, Authorization: 'Bearer ' + playerA } }), db);
+  assert.equal(removed.status, 200);
+  assert.equal((await removed.json()).personal, null);
+});
+
 test('deleting a personal record cannot remove another browser or another difficulty', async()=>{
   const db=database();
   await submit(db,playerA,await begin(db),2,0);

@@ -3,6 +3,8 @@
 ゲーム本体は https://shousui-works.github.io/gungun-snake-garden/ で公開します。
 このサービスはSitesのCloudflare WorkerとD1を使い、難易度別の記録を共有します。
 
+独自ドメイン `https://game.ludora-base.com` からもランキングを読み書きできます。移行中のGitHub Pagesの接続も引き続き許可します。
+
 ## データとAPI
 
 - `POST /api/runs`：難易度を指定し、今回のプレイに結び付いた一度だけ使えるチケットを発行。
