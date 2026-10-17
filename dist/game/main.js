@@ -207,8 +207,8 @@ function frame(now) {
   for (const event of sim.events.splice(0)) {
     audio.play(event.type, event);
     if (event.type === 'level') { updateStatus(); announce(event.style ? `★ ${event.style.label}に へんしん！` : `レベル ${event.level}！ ぐんぐん そだったね`); }
-    if (event.type === 'treasure-appear') announce('金色の おたからヘビ！ 追いかけてみよう');
-    if (event.type === 'treasure') { updateStatus(); announce('おたから！ フルーツが いっぱい'); }
+    if (event.type === 'treasure-appear') announce(event.jackpot ? '大あたり！ 宝石の おたからヘビ！' : '金色の おたからヘビ！ 追いかけてみよう');
+    if (event.type === 'treasure') { updateStatus(); announce(event.jackpot ? '大あたり！ ごうかな おたからフルーツ！' : 'おたから！ フルーツを あつめよう'); }
     if (event.type === 'over') finish();
   }
   if (now - lastStatus > 120) { updateStatus(); lastStatus = now; }

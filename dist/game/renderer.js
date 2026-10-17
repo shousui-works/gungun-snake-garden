@@ -14,6 +14,11 @@ function star(c, x, y, radius) {
   for (let i = 0; i < 10; i++) { const a = i * Math.PI / 5 - Math.PI / 2, r = i % 2 ? radius * .45 : radius; c.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r); }
   c.closePath(); c.fill();
 }
+function jewel(c, x, y, radius, color = '#bca1df') {
+  c.save(); c.translate(x, y); c.lineWidth = 1.2; c.strokeStyle = '#fffdf5'; c.fillStyle = color;
+  c.beginPath(); c.moveTo(0, -radius); c.lineTo(radius * .7, 0); c.lineTo(0, radius); c.lineTo(-radius * .7, 0); c.closePath(); c.fill(); c.stroke();
+  c.beginPath(); c.moveTo(0, -radius); c.lineTo(0, radius); c.moveTo(-radius * .7, 0); c.lineTo(radius * .7, 0); c.stroke(); c.restore();
+}
 export class Renderer {
   constructor(canvas, simulation, viewMode = 'wide') {
     this.canvas = canvas; this.simulation = simulation; this.ctx = canvas.getContext('2d', { alpha: false }); this.camera = { x: 800, y: 800 }; this.clock = 0;
@@ -87,7 +92,7 @@ export class Renderer {
       const measured = c.measureText(pt.text).width;
       if (measured > this.width - 20) c.font = `800 ${Math.max(14, (pt.large ? 23 : pt.bite ? 16 : 19) * (this.width - 20) / measured)}px ${FONT}`;
       const textWidth = Math.min(c.measureText(pt.text).width, this.width - 20), x = clamp(point.x, 10 + textWidth / 2, this.width - 10 - textWidth / 2), y = clamp(point.y, 32, this.height - 20);
-      c.lineWidth = 5; c.strokeStyle = '#fdfcf5'; c.strokeText(pt.text, x, y); c.fillStyle = pt.treasure ? '#a47726' : pt.bite ? '#b56c57' : '#7956b7'; c.fillText(pt.text, x, y); c.restore();
+      c.lineWidth = 5; c.strokeStyle = '#fdfcf5'; c.strokeText(pt.text, x, y); c.fillStyle = pt.jackpot ? '#8260b5' : pt.treasure ? '#a47726' : pt.bite ? '#b56c57' : '#7956b7'; c.fillText(pt.text, x, y); c.restore();
     }
     this.drawGrowthLabel(p);
   }
@@ -111,8 +116,9 @@ export class Renderer {
     const x = clamp(point.x, 25, this.width - 25), y = clamp(point.y, x > this.width - 130 ? 86 : 30, this.height - 68);
     const angle = Math.atan2(point.y - y, point.x - x), c = this.ctx;
     c.save(); c.setTransform(this.dpr, 0, 0, this.dpr, 0, 0); c.translate(x, y);
-    c.fillStyle = '#fff6d8eb'; c.strokeStyle = '#cba851'; c.lineWidth = 1.2; circle(c, 0, 0, 17); c.fill(); c.stroke();
-    c.fillStyle = '#c9a044'; star(c, 0, 0, 8);
+    c.fillStyle = t.jackpot ? '#f3e7ffeb' : '#fff6d8eb'; c.strokeStyle = t.jackpot ? '#a17cc7' : '#cba851'; c.lineWidth = 1.2; circle(c, 0, 0, 17); c.fill(); c.stroke();
+    if (t.jackpot) jewel(c, 0, 0, 9); else { c.fillStyle = '#c9a044'; star(c, 0, 0, 8); }
+    c.fillStyle = t.jackpot ? '#9671bb' : '#c9a044';
     c.rotate(angle); c.beginPath(); c.moveTo(20, -4); c.lineTo(27, 0); c.lineTo(20, 4); c.closePath(); c.fill(); c.restore();
   }
   drawPlant(d) {
@@ -129,7 +135,10 @@ export class Renderer {
   drawFood(f) {
     const c = this.ctx, bob = Math.sin(this.clock * 2.2 + f.phase) * 1.1 - (f.flight > 0 ? Math.sin((1 - f.flight / CONFIG.fruitFlightSeconds) * Math.PI) * 32 : 0);
     c.save(); c.translate(f.x, f.y + bob); c.scale(f.large ? CONFIG.bigFruitScale : 1, f.large ? CONFIG.bigFruitScale : 1);
-    if (f.bonus) { c.fillStyle = '#fff1aa55'; circle(c, 0, 0, 15); c.fill(); c.fillStyle = '#f5e6a3'; star(c, 13, -14, 4); }
+    if (f.bonus) {
+      c.fillStyle = f.jackpot ? '#eadfff77' : '#fff1aa55'; circle(c, 0, 0, 15); c.fill();
+      if (f.jackpot) jewel(c, 13, -14, 5); else { c.fillStyle = '#f5e6a3'; star(c, 13, -14, 4); }
+    }
     if (f.large) {
       c.fillStyle = '#fff3ba65'; circle(c, 0, 0, 17 + Math.sin(this.clock * 2 + f.phase)); c.fill();
       c.strokeStyle = '#fff8d8b0'; c.lineWidth = 1.2; circle(c, 0, 0, 17); c.stroke();
@@ -171,7 +180,8 @@ export class Renderer {
     const palette = style?.palette, baseColors = style?.colors || palette?.[0] || s.colors;
     const chew = player && s.chewTimer > 0 ? Math.sin((1 - s.chewTimer / CONFIG.chewSeconds) * Math.PI) : 0;
     if (s.treasure) {
-      c.save(); c.fillStyle = '#ffe9a06b'; circle(c, s.x, s.y, r + 8 + Math.sin(this.clock * 4) * 2); c.fill();
+      c.save(); c.fillStyle = s.jackpot ? '#e2c6f977' : '#ffe9a06b'; circle(c, s.x, s.y, r + 8 + Math.sin(this.clock * 4) * 2); c.fill();
+      if (s.jackpot) { c.strokeStyle = '#fff5c5'; c.lineWidth = 1.5; circle(c, s.x, s.y, r + 13); c.stroke(); }
       c.fillStyle = '#fff7c5'; star(c, s.x - 20, s.y - 18, 4); star(c, s.x + 22, s.y + 10, 3); c.restore();
     }
     if (player && s.growthTimer > 0) {
@@ -201,9 +211,15 @@ export class Renderer {
       const colors = palette ? palette[i % palette.length] : baseColors;
       c.fillStyle = colors[1]; circle(c, pt.x, pt.y + 1.5, size); c.fill();
       c.fillStyle = colors[0]; circle(c, pt.x, pt.y - 1, size); c.fill();
-      if (s.treasure) { c.fillStyle = '#fff4b3'; star(c, pt.x, pt.y - 1, size * .48); }
+      if (s.treasure) { if (!s.jackpot) { c.fillStyle = '#fff4b3'; star(c, pt.x, pt.y - 1, size * .48); } }
       else if (!player && s.level >= 4 && i % 2 === 0) { c.fillStyle = '#ffffff40'; circle(c, pt.x - size * .2, pt.y - size * .23, size * .45); c.fill(); }
       else { c.fillStyle = '#ffffff1a'; circle(c, pt.x - size * .22, pt.y - size * .25, size * .55); c.fill(); }
+    }
+    if (s.treasure && s.jackpot) {
+      for (let i = 2; i < count; i += 2) {
+        const pt = s.body[i]; if (!this.visible(pt.x, pt.y, 45)) continue;
+        jewel(c, pt.x, pt.y - 1, r * (.58 + .42 * (1 - i / count)) * .66, i % 4 ? '#9bd8cf' : '#e8a8c6');
+      }
     }
     if (style?.pattern) {
       const spacing = ['snow','flowers','gems','crystal','stars','galaxy','bolts','gold','royal'].includes(style.pattern) ? 3 : ['dots','stripes'].includes(style.pattern) ? 1 : 2;
@@ -240,6 +256,10 @@ export class Renderer {
       c.fillStyle = '#eea2b0'; c.beginPath(); c.ellipse(r*.92,r*.035,r*.065,r*.1,0,0,Math.PI*2); c.fill();
     } else { c.strokeStyle = baseColors[1]; c.lineWidth = 1.2; c.lineCap = 'round'; c.beginPath(); c.moveTo(r * .87, -r * .16); c.quadraticCurveTo(r * 1.06, 0, r * .87, r * .16); c.stroke(); }
     c.restore();
+    if (s.treasure && s.jackpot) {
+      c.save(); c.fillStyle = '#fff2bf'; c.beginPath(); c.ellipse(s.x - r * .12, s.y - r * .85, r * .75, r * .2, 0, 0, Math.PI * 2); c.fill();
+      jewel(c, s.x - r * .12, s.y - r * 1.25, r * .8, '#a9cee9'); c.restore();
+    }
     if (style?.accessory) this.drawAccessory(s, style.accessory);
     if (!player && !s.treasure && relation(this.simulation.player.level, s.level) === 'danger') {
       c.strokeStyle = '#b96a5c77'; c.lineWidth = 1.8; circle(c, s.x, s.y, r + 5); c.stroke();
@@ -373,9 +393,10 @@ export class Renderer {
     const c = this.ctx, point = this.screenPosition(s);
     c.save(); c.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     if (s.treasure) {
-      const x = point.x - 38, y = point.y - point.radius - 33;
-      c.fillStyle = '#fff5d8'; c.strokeStyle = '#d4b469'; c.lineWidth = 1; pill(c, x, y, 76, 24, 11); c.fill(); c.stroke();
-      c.fillStyle = '#ba9038'; star(c, x + 13, y + 12, 6); c.font = `700 11px ${FONT}`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('おたから', x + 45, y + 12); c.restore(); return;
+      const x = clamp(point.x - 38, 4, this.width - 80), y = clamp(point.y - point.radius - (s.jackpot ? 41 : 33), 4, this.height - 28);
+      c.fillStyle = s.jackpot ? '#f3e7ff' : '#fff5d8'; c.strokeStyle = s.jackpot ? '#ad87ce' : '#d4b469'; c.lineWidth = 1; pill(c, x, y, 76, 24, 11); c.fill(); c.stroke();
+      if (s.jackpot) jewel(c, x + 13, y + 12, 7); else { c.fillStyle = '#ba9038'; star(c, x + 13, y + 12, 6); }
+      c.fillStyle = s.jackpot ? '#8661ad' : '#ba9038'; c.font = `700 11px ${FONT}`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(s.jackpot ? '大あたり' : 'おたから', x + 45, y + 12); c.restore(); return;
     }
     const mode = relation(this.simulation.player.level, s.level), text = `Lv.${s.level}`;
     c.font = `700 11px ${FONT}`; const w = c.measureText(text).width + 37, x = point.x - w / 2, y = point.y - point.radius - 35;

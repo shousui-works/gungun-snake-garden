@@ -1,5 +1,5 @@
 import { CONFIG, DIFFICULTIES, FRUIT_KINDS, FRUITS } from './config.js';
-import { addExperience, relation, radiusFor, segmentCount, distance, angleDifference, clamp, fruitRadius, fruitExperience, unlockedAppearances } from './rules.js';
+import { addExperience, relation, radiusFor, segmentCount, distance, angleDifference, clamp, fruitRadius, fruitExperience, treasureFruitRewards, unlockedAppearances } from './rules.js';
 
 export function makeSnake(x, y, angle, level, id, colors) {
   const snake = { id, x, y, angle, targetAngle: angle, level, xp: 0, radius: radiusFor(level), colors, active: true, path: [], body: [], aiWait: 0, chaseTime: 0, chaseCooldown: 0, respawn: 0, bumpCooldown: 0, chewTimer: 0, growthTimer: 0 };
@@ -99,11 +99,12 @@ export class Simulation {
       const x = clamp(p.x + Math.cos(angle) * gap, 90, CONFIG.worldSize - 90), y = clamp(p.y + Math.sin(angle) * gap, 90, CONFIG.worldSize - 90);
       if (distance({ x, y }, p) < 75 || this.enemies.some(e => e.active && distance({ x, y }, e) < 135)) continue;
       const t = makeSnake(x, y, angle, 1, 'treasure', ['#f0cf65', '#b98937']);
+      t.jackpot = this.random() < CONFIG.treasureJackpotChance;
       t.treasure = true; t.radius = 10.5; t.life = CONFIG.treasureLifetime; updateBody(t); t.body.length = 5;
       this.treasure = t;
-      this.events.push({ type: 'treasure-appear' });
-      this.popups.push({ text: 'おたからヘビ！', x, y: y - 62, life: 2, maxLife: 2, treasure: true });
-      this.burst(x, y, 14, '#fff0a8'); return;
+      this.events.push({ type: 'treasure-appear', jackpot: t.jackpot });
+      this.popups.push({ text: t.jackpot ? '大あたりの おたからヘビ！' : 'おたからヘビ！', x, y: y - 62, life: 2, maxLife: 2, treasure: true, jackpot: t.jackpot });
+      this.burst(x, y, t.jackpot ? 22 : 14, t.jackpot ? '#d6bbef' : '#fff0a8'); return;
     }
     this.treasureNextAt = this.time + 2;
   }
@@ -127,14 +128,17 @@ export class Simulation {
   catchTreasure() {
     if (this.state !== 'playing' || !this.treasure) return;
     const t = this.treasure; this.treasure = null; this.treasuresCaught++; this.scheduleTreasure();
-    this.events.push({ type: 'treasure' }); this.bloom(t.x, t.y, 'gold');
-    this.burst(t.x, t.y, 30, '#f5d36f');
-    this.popups.push({ text: 'おたから！', x: t.x, y: t.y - 55, life: 1.8, maxLife: 1.8, large: true, treasure: true });
+    this.bloom(t.x, t.y, 'gold');
+    this.burst(t.x, t.y, t.jackpot ? 40 : 30, t.jackpot ? '#d6bbef' : '#f5d36f');
+    this.popups.push({ text: t.jackpot ? '大あたり！' : 'おたから！', x: t.x, y: t.y - 55, life: 1.8, maxLife: 1.8, large: true, treasure: true, jackpot: t.jackpot });
     // Bonus fruit is collected once, after its short flight. Regular food stays at 80.
     const room = CONFIG.maxBonusFruit - this.food.filter(f => f.bonus).length;
-    for (let i = 0; i < Math.min(CONFIG.treasureFruitCount, room); i++) {
-      const angle = i * Math.PI * 2 / CONFIG.treasureFruitCount, radius = 48 + (i % 3) * 17;
-      this.food.push({ x: t.x, y: t.y, originX: t.x, originY: t.y, landingX: clamp(t.x + Math.cos(angle) * radius, 35, CONFIG.worldSize - 35), landingY: clamp(t.y + Math.sin(angle) * radius, 35, CONFIG.worldSize - 35), flight: CONFIG.fruitFlightSeconds, life: CONFIG.bonusFruitLifetime, bonus: true, phase: angle, kind: FRUIT_KINDS[i % FRUIT_KINDS.length], large: i === 0 });
+    // Freeze the reward at capture time, so collecting fruit after a level-up never changes its value.
+    const rewards = treasureFruitRewards(this.player.level, t.jackpot, room);
+    this.events.push({ type: 'treasure', jackpot: !!t.jackpot, rewardXp: rewards.reduce((sum, value) => sum + value, 0) });
+    for (let i = 0; i < rewards.length; i++) {
+      const angle = i * Math.PI * 2 / rewards.length, radius = 48 + (i % 3) * 17;
+      this.food.push({ x: t.x, y: t.y, originX: t.x, originY: t.y, landingX: clamp(t.x + Math.cos(angle) * radius, 35, CONFIG.worldSize - 35), landingY: clamp(t.y + Math.sin(angle) * radius, 35, CONFIG.worldSize - 35), flight: CONFIG.fruitFlightSeconds, life: CONFIG.bonusFruitLifetime, bonus: true, jackpot: !!t.jackpot, rewardXp: rewards[i], phase: angle, kind: FRUIT_KINDS[i % FRUIT_KINDS.length], large: i === 0 });
     }
   }
   updateBonusFruit(dt) {
@@ -156,7 +160,7 @@ export class Simulation {
       this.combo = this.time <= this.comboUntil ? Math.min(this.combo + 1, CONFIG.comboCap) : 1;
       this.comboUntil = this.time + CONFIG.comboSeconds;
       this.events.push({ type: 'eat', combo: this.combo, kind: fruit.kind, large: fruit.large });
-      this.popups.push({ text: fruit.large ? `ぱくっ！ +${amount}` : this.combo >= 3 ? 'ぱくぱく！' : 'ぱくっ！', x: p.x + 43, y: p.y - 24, life: .75, maxLife: .75, bite: true });
+      this.popups.push({ text: fruit.large || fruit.bonus ? `ぱくっ！ +${amount}` : this.combo >= 3 ? 'ぱくぱく！' : 'ぱくっ！', x: p.x + 43, y: p.y - 24, life: .75, maxLife: .75, bite: true });
     } else if (enemy) {
       this.events.push({ type: 'enemy' });
       this.popups.push({ text: `+${amount}`, x, y: y - 40, life: 1, maxLife: 1 });

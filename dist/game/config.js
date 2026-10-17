@@ -7,6 +7,7 @@ export const CONFIG = Object.freeze({
   chewSeconds: .6, comboSeconds: 2.2, comboCap: 8, maxPopups: 12,
   treasureFirstSeconds: 8, treasureIntervalSeconds: 24, treasureLifetime: 24,
   treasureSpeed: 120, treasureTurnSpeed: 6, treasureFruitCount: 8, maxBonusFruit: 16,
+  treasureBaseXp: 10, treasureLevelShare: .5, treasureJackpotChance: .15,
   fruitFlightSeconds: .55, bonusFruitLifetime: 22, maxFlowers: 600,
   playerColor: '#9b83db', playerDark: '#7257b1',
   enemyColors: [ ['#79bea6', '#3f8870'], ['#edb674', '#b57d3b'], ['#74b8d5', '#367f9f'], ['#e99691', '#ae555f'], ['#9bbd76', '#638a3f'], ['#c7a0c9', '#936b96'] ],
