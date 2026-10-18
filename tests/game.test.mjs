@@ -57,7 +57,52 @@ test('turns are gradual, edges are safe, and long frame deltas are capped', () =
   s.player.x = 1585; s.player.y = 800; s.player.angle = 0;
   // Keep spawned enemies out of this check of wall movement.
   for (let i = 0; i < 250; i++) { s.enemies = []; s.step(.05, 0); }
-  assert.equal(s.state, 'playing'); assert.ok(s.player.x <= 1600 - s.player.radius); assert.ok(s.player.x >= s.player.radius);
+  assert.equal(s.state, 'playing'); assert.equal(s.player.x, 1600 - s.player.radius);
+  assert.equal(s.player.angle, 0); assert.equal(s.player.targetAngle, 0);
+});
+test('a tap toward any wall or corner keeps its heading after release, without bouncing or crossing the boundary', () => {
+  for (const difficulty of ['easy', 'normal', 'hard']) for (const level of [1, 100]) {
+    const r = radiusFor(level), end = CONFIG.worldSize - r;
+    for (const [x, y, angle, finalX, finalY] of [
+      [end - 5, 800, 0, end, 800], [r + 5, 800, Math.PI, r, 800],
+      [800, r + 5, -Math.PI / 2, 800, r], [800, end - 5, Math.PI / 2, 800, end],
+      [end - 2, end - 2, Math.PI / 4, end, end], [r + 2, end - 2, Math.PI * .75, r, end],
+      [r + 2, r + 2, -Math.PI * .75, r, r], [end - 2, r + 2, -Math.PI / 4, end, r],
+    ]) {
+      const s = new Simulation(seeded(), difficulty); s.start(); s.food = []; s.treasureNextAt = Infinity;
+      s.player = makeSnake(x, y, angle, level, 'player', [CONFIG.playerColor, CONFIG.playerDark]);
+      for (let i = 0; i < 60; i++) { s.enemies = []; s.step(.05, i === 0 ? angle : null); }
+      assert.equal(s.state, 'playing'); assert.equal(s.player.targetAngle, angle); assert.equal(s.player.angle, angle);
+      assert.ok(Math.abs(s.player.x - finalX) < 1e-8); assert.ok(Math.abs(s.player.y - finalY) < 1e-8);
+      assert.ok(s.player.path.length < 600);
+    }
+  }
+});
+test('diagonal input slides along each wall, and a new tap can turn away from it', () => {
+  const r = radiusFor(1), end = CONFIG.worldSize - r;
+  for (const [x, y, angle, axis, tangent] of [
+    [end, 800, Math.PI / 4, 'x', 'y'], [r, 800, Math.PI * .75, 'x', 'y'],
+    [800, r, -Math.PI / 4, 'y', 'x'], [800, end, Math.PI / 4, 'y', 'x'],
+  ]) {
+    const s = isolated(); s.food = []; s.treasureNextAt = Infinity;
+    s.player = makeSnake(x, y, angle, 1, 'player', [CONFIG.playerColor, CONFIG.playerDark]);
+    for (let i = 0; i < 10; i++) { s.enemies = []; s.step(.05, i === 0 ? angle : null); }
+    assert.equal(s.player[axis], axis === 'x' ? x : y); assert.equal(s.player.targetAngle, angle);
+    const expected = (tangent === 'x' ? x : y) + s.settings.speed * .5 * Math.SQRT1_2;
+    assert.ok(Math.abs(s.player[tangent] - expected) < 1e-8);
+    const inward = Math.atan2(800 - s.player.y, 800 - s.player.x);
+    for (let i = 0; i < 30; i++) { s.enemies = []; s.step(.05, i === 0 ? inward : null); }
+    assert.equal(s.player.targetAngle, inward);
+    assert.ok(s.player.x > r + 10 && s.player.x < end - 10 && s.player.y > r + 10 && s.player.y < end - 10);
+  }
+});
+test('computer-controlled snakes still steer away from the wall', () => {
+  const s = isolated(); s.food = []; s.treasureNextAt = Infinity;
+  const enemy = makeSnake(1580, 800, 0, 1, 'test', CONFIG.enemyColors[0]); enemy.aiWait = 100; s.enemies = [enemy];
+  const treasure = makeSnake(800, 20, -Math.PI / 2, 1, 'treasure', ['#f0cf65', '#b98937']);
+  Object.assign(treasure, { treasure: true, life: 20, aiWait: 100 }); s.treasure = treasure;
+  s.step(.05);
+  assert.equal(enemy.targetAngle, Math.PI); assert.ok(Math.abs(treasure.targetAngle - Math.PI / 2) < 1e-8);
 });
 test('movement is equally fast for the player and ordinary enemies at every level', () => {
   for (const difficulty of ['easy', 'normal', 'hard']) {

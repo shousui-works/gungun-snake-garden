@@ -23,9 +23,9 @@ export function updateBody(snake) {
   while (result.length < count) result.push({ ...(result.at(-1)) });
   snake.body = result;
 }
-function moveSnake(s, dt, speed, turnSpeed = CONFIG.turnSpeed) {
+function moveSnake(s, dt, speed, turnSpeed = CONFIG.turnSpeed, avoidWalls = true) {
   const margin = 85, size = CONFIG.worldSize;
-  if (s.x < margin || s.x > size - margin || s.y < margin || s.y > size - margin) {
+  if (avoidWalls && (s.x < margin || s.x > size - margin || s.y < margin || s.y > size - margin)) {
     const vx = Math.cos(s.targetAngle), vy = Math.sin(s.targetAngle);
     const inwardX = s.x < margin ? 2.5 : s.x > size - margin ? -2.5 : 0;
     const inwardY = s.y < margin ? 2.5 : s.y > size - margin ? -2.5 : 0;
@@ -263,7 +263,7 @@ export class Simulation {
     if (this.time > this.comboUntil) this.combo = 0;
     if (inputAngle !== null) p.targetAngle = inputAngle;
     const speedScale = this.settings.speed / CONFIG.snakeSpeed;
-    moveSnake(p, dt, this.settings.speed, CONFIG.playerTurnSpeed * speedScale);
+    moveSnake(p, dt, this.settings.speed, CONFIG.playerTurnSpeed * speedScale, false);
     for (const e of this.enemies) {
       if (!e.active) { e.respawn -= dt; if (e.respawn <= 0) this.tryRespawn(e); continue; }
       this.updateEnemy(e, dt); moveSnake(e, dt, this.settings.speed, CONFIG.turnSpeed * speedScale);
