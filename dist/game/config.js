@@ -14,21 +14,21 @@ export const CONFIG = Object.freeze({
 });
 export const DIFFICULTIES = Object.freeze({
   easy: Object.freeze({
-    label: 'やさしい', description: 'ゆったり進む・敵はひかえめ', speed: 115,
+    label: 'やさしい', description: 'ゆったり進む・敵はひかえめ', speed: 115, treasureSpeedScale: .75,
     enemyCount: 3, maxEnemies: 4, enemyLevels: Object.freeze([1, 1, 2]),
     protectionSeconds: 8, respawnSeconds: 4.5, strongChance: .15, strongOffsetMax: 1,
     chaseRange: 125, chaseSeconds: .8, chaseCooldown: 7, aiWait: .28, aiJitter: .18,
     lateGame: Object.freeze({ startLevel: 40, chaseRange: 140, chaseSeconds: 1.2, strongEnemies: 1, strongOffsetMax: 2, refreshSeconds: 12, refreshLevelGap: 8 }),
   }),
   normal: Object.freeze({
-    label: 'ふつう', description: 'ほどよい速さで楽しもう', speed: 130,
+    label: 'ふつう', description: 'ほどよい速さで楽しもう', speed: 130, treasureSpeedScale: 1,
     enemyCount: 4, maxEnemies: 5, enemyLevels: Object.freeze([1, 1, 2, 3]),
     protectionSeconds: 6, respawnSeconds: 3.5, strongChance: .25, strongOffsetMax: 2,
     chaseRange: 145, chaseSeconds: 1.25, chaseCooldown: 6, aiWait: .25, aiJitter: .15,
     lateGame: Object.freeze({ startLevel: 20, chaseRange: 185, chaseSeconds: 2, strongEnemies: 1, strongOffsetMax: 4, refreshSeconds: 8, refreshLevelGap: 6 }),
   }),
   hard: Object.freeze({
-    label: 'むずかしい', description: 'スピーディ・敵も手ごわい', speed: CONFIG.snakeSpeed,
+    label: 'むずかしい', description: 'スピーディ・敵も手ごわい', speed: CONFIG.snakeSpeed, treasureSpeedScale: 1,
     enemyCount: CONFIG.enemyCount, maxEnemies: CONFIG.maxEnemies, enemyLevels: Object.freeze([1, 1, 2, 3]),
     protectionSeconds: CONFIG.protectionSeconds, respawnSeconds: CONFIG.respawnSeconds, strongChance: .35, strongOffsetMax: 2,
     chaseRange: 175, chaseSeconds: 2, chaseCooldown: 5, aiWait: .22, aiJitter: .15,

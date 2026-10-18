@@ -108,7 +108,7 @@ export class Simulation {
       t.targetAngle = gap > 300 && !danger ? Math.atan2(p.y - t.y, p.x - t.x) : Math.atan2(t.y - avoid.y, t.x - avoid.x) + Math.sin(this.time * 2.1) * .28;
     }
     const speedScale = this.settings.speed / CONFIG.snakeSpeed;
-    moveSnake(t, dt, CONFIG.treasureSpeed * speedScale, CONFIG.treasureTurnSpeed * speedScale); t.body.length = 5;
+    moveSnake(t, dt, CONFIG.treasureSpeed * speedScale * this.settings.treasureSpeedScale, CONFIG.treasureTurnSpeed * speedScale); t.body.length = 5;
     if (touching(p, t.body, p.radius + t.radius)) this.catchTreasure();
   }
   catchTreasure() {
